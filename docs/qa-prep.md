@@ -114,7 +114,7 @@ We forecast tomorrow's daily PM2.5 for six Midwest cities, so an athletic direct
 - **Q:** Does your forecast range mean anything on the days that matter?
 - **Who answers:** Abhiddyu
 - **A:** Each forecast gets an 80% range from the training years' misses, grouped by forecast level. In 2025 the measurement fell inside it on 79.6% of days, but only 37% of bad days and 62% of smoke days, because arrival days land above the range. On July 31 in Milwaukee it was 0 to 55, so on smoky-looking days the model does show it's unsure.
-- **If they push:** "Before we fixed its rule, we tried 4 groupings on 2025. All gave 80–81% coverage, so that choice couldn't flatter it much."
+- **If they push:** "Before we fixed its rule, we tried a few ways of grouping it on 2025. That's in our honesty notes. The final range covers 79.6% of 2025 days, so it isn't tuned to look better than 80%."
 
 **18.**
 - **Q:** Who would actually use this, and what changes for them?

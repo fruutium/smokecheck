@@ -38,7 +38,7 @@ We started from suggested project 4.3.2 (next-day air quality forecast). Instead
 
 **Tried and dropped:** trees predicting the PM2.5 level (1 of 38 bad training days caught); smoke mapped 300–900 km upwind (no change in error); and adding 2018–2022 (lower error but higher warning cost on training years, so never scored on 2025).
 
-**Honesty notes:** before fixing our process we saw some 2025 results: the baselines at a plain 35 line, one scratch run of model variants, and our first warning rule (the cheapest training line) at both 24 and 29.5, after a 0.005 µg/m³ rounding change made it jump. The range tried 4 layouts on 2025. We picked the cities knowing their smoky-day counts, 2025 included.
+**Honesty notes:** before fixing our process we saw some 2025 results: the baselines at a plain 35 line, one scratch run of model variants, and our first warning rule (the cheapest training line) at both 24 and 29.5, after a 0.005 µg/m³ rounding change made it jump. We tried a few ways of grouping the range on 2025 before fixing its rule. We picked the cities knowing their smoky-day counts, 2025 included.
 
 ## What we'd do next
 Add more cities that get smoke, such as Duluth (more years added only 3 bad smoke days). Forecast practice hours (3–6 PM) and test SmokeCheck with a real athletic director.
