@@ -23,7 +23,7 @@
 
 ## 3. How it works · 1:15–1:45
 **Screen:** the "Does it work?" tab with the baseline table.
-**Say:** "We don't forecast from scratch. We take the CAMS estimate from Open-Meteo, which is a model output, not a measurement, and train a model to correct it using EPA monitor readings and weather. We trained on 2022 to 2024 and tested on all of 2025. Against 'tomorrow equals today', SmokeCheck's error was [ ] versus [ ]. On the [N] days over the limit, it caught [A]; raw CAMS caught [B]. It raised [C] false alarms."
+**Say:** "[SmokeCheck combines things known the evening before: EPA monitor readings in the city and its neighbours, NOAA's satellite smoke map, tomorrow's weather forecast, and the CAMS estimate from Open-Meteo, which is a model output, not a measurement.] We trained on 2022 to 2024 and tested on all of 2025. Against 'tomorrow equals today', SmokeCheck's error was [ ] versus [ ]. On the [N] days over the limit, it caught [A]; raw CAMS caught [B]. It raised [C] false alarms."
 
 ## 4. Limits and next · 1:45–2:00
 **Screen:** the "Where it fails" tab.
