@@ -16,7 +16,8 @@ START_CITY, START_DATE = "Milwaukee", "2025-07-31"  # the headline smoke day
 NAMES = {"pred_model": "SmokeCheck", "pred_noaa": "NOAA day-ahead forecast (NAQFC)",
          "pred_persistence": "Persistence (yesterday's measurement)",
          "pred_climatology": "Climatology (usual for this city and month)",
-         "pred_cams": "Raw CAMS estimate (optimistic)"}
+         "pred_cams": "Raw CAMS estimate (optimistic)",
+         "noaa_at_limit": "NOAA at the plain 35 line"}  # a row in "Does it work?", not a column
 CAMS_NOTE = ("Raw CAMS is optimistic: Open-Meteo keeps no true day-ahead CAMS archive, "
              "so its value partly sees the day's smoke.")
 
@@ -117,15 +118,21 @@ def card(rows, city, date, metrics):
         why = f"SmokeCheck forecasts {pred:.1f} µg/m³ for this day."
     how = f"SmokeCheck warns above {cut:g} µg/m³."
     if "cost_of_a_miss" in metrics and cut != limit:
-        # The cut-off was set on the training years (2022–2024), never on 2025; 200 resamples per the notebook.
+        # The cut-off was set on the training years (2022–2024); "200" and "24 to 29" come from the notebook.
         how = (f"SmokeCheck warns above {cut:g} µg/m³, not {limit:g}, because its forecasts run low on smoke "
-               f"days. The line is the middle of the cheapest lines across 200 resampled copies of 2022–2024, "
-               f"counting one missed bad day as {metrics['cost_of_a_miss']:g} false alarms.")
+               f"days. The line comes from a rule we fixed before computing it (the middle of the cheapest lines "
+               f"over 200 resampled copies of 2022–2024, counting one missed bad day as "
+               f"{metrics['cost_of_a_miss']:g} false alarms). Those years can't pin it down exactly: anywhere "
+               f"from about 24 to 29 is defensible.")
 
     # The left box compares with NOAA's official forecast; files without it fall back to raw CAMS.
     compare = "pred_noaa" if "pred_noaa" in rows else "pred_cams"
     compare_label = "NOAA's official forecast said" if compare == "pred_noaa" else "Raw CAMS estimate said"
     other = row.get(compare)
+    # Judges ask what NOAA would have said at the plain bad-day line, so show that too (display only).
+    at_limit = ""
+    if compare == "pred_noaa" and pd.notna(other):
+        at_limit = f"at the EPA's {limit:g} line: {'warn' if verdict(other, limit) == INDOORS else 'no warning'}"
 
     # Every other pred_* column in the file is a baseline, shown smaller under the three numbers.
     shown_elsewhere = ["pred_model", compare]
@@ -147,7 +154,7 @@ def card(rows, city, date, metrics):
     </div>
     <div class="numbers">
       <div><span>{compare_label}</span><b>{number(other, "no forecast")}</b>
-        <i>{call_words(other, cutoff(metrics, compare))}</i></div>
+        <i>{call_words(other, cutoff(metrics, compare))}</i><small>{at_limit}</small></div>
       <div><span>SmokeCheck said</span><b>{number(pred, "not ready yet")}</b><i>{call_words(pred, cut)}</i>
         <small>{likely}</small></div>
       <div><span>Monitors measured</span><b>{number(measured, "no measurement")}</b>
@@ -188,16 +195,30 @@ def city_map(rows, date, metrics):
     return fig
 
 
-def scoreboard(section):
-    """One row per forecaster, SmokeCheck first. section is {pred_column: {mae, warn_at, caught, ...}}."""
+def scoreboard(section, miss_cost=None):
+    """One row per forecaster, SmokeCheck first. section is {pred_column: {mae, warn_at, caught, ...}}.
+    With miss_cost, adds the cost the cut-offs were chosen on: miss_cost × missed + false alarms."""
     order = [c for c in NAMES if c in section] + [c for c in section if c not in NAMES]
-    return pd.DataFrame([{
+    table = pd.DataFrame([{
         "Forecaster": NAMES.get(c, c),
         "Average miss (MAE, µg/m³)": section[c].get("mae"),
         "Warns above": section[c].get("warn_at"),
         "Bad days caught": f"{section[c].get('caught')} of {section[c].get('bad_days')}",
         "False alarms": section[c].get("false_alarms"),
     } for c in order])
+    if miss_cost is not None:
+        table[f"Cost ({miss_cost:g} × missed + false alarms)"] = [
+            miss_cost * section[c]["missed"] + section[c]["false_alarms"] for c in order]
+    return table
+
+
+def stats_at_line(rows, column, line, limit):
+    """How one forecaster would score on these rows if it warned above `line` instead of its own cut-off."""
+    scored = rows.dropna(subset=[column, "obs_pm25"])
+    bad, warn = scored["obs_pm25"] > limit, scored[column] > line
+    return {"mae": round((scored[column] - scored["obs_pm25"]).abs().mean(), 2), "warn_at": line,
+            "bad_days": int(bad.sum()), "caught": int((bad & warn).sum()),
+            "missed": int((bad & ~warn).sum()), "false_alarms": int((~bad & warn).sum())}
 
 
 def grouped_scoreboard(section, group_name):
@@ -266,7 +287,15 @@ with gr.Blocks(title="SmokeCheck") as demo:
         shown = [s for s in sections if s[0] in METRICS]
         for key, title, group_name in shown:
             gr.Markdown(f"### {title}")
-            table = scoreboard(METRICS[key]) if group_name is None else grouped_scoreboard(METRICS[key], group_name)
+            if key == "overall":
+                section = dict(METRICS[key])
+                if "pred_noaa" in ROWS:  # NOAA's 2025 test rows scored at the plain bad-day line
+                    section["noaa_at_limit"] = stats_at_line(ROWS, "pred_noaa", limit, limit)
+                table = scoreboard(section, METRICS.get("cost_of_a_miss"))
+            elif group_name is None:
+                table = scoreboard(METRICS[key])
+            else:
+                table = grouped_scoreboard(METRICS[key], group_name)
             gr.Dataframe(table, max_height=900)
             if key == "overall" and "pred_cams" in METRICS[key]:
                 gr.Markdown(CAMS_NOTE)
