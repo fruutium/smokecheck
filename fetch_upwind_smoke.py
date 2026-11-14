@@ -44,13 +44,13 @@ def upwind_points(lat, lon, u, v):
     return [(lon + east * d / km_per_deg_lon, lat + north * d / KM_PER_DEG_LAT) for d in DISTANCES_KM]
 
 
-def build():
-    daily = pd.read_csv("data/daily.csv", usecols=["city", "date", "wind_u", "wind_v"])
+def build(daily, raw=RAW):
+    """`daily` needs city, date, wind_u and wind_v; `raw` is the folder with the HMS zips."""
     rows = []
     for date, day in daily.groupby("date"):
         # Known limit: the HMS file covers a UTC day, but the wind is averaged over the
         # local-standard-time day (5-6 hours behind), so the two don't line up exactly.
-        path = RAW / f"hms_smoke{date.replace('-', '')}.zip"
+        path = raw / f"hms_smoke{date.replace('-', '')}.zip"
         has_file = path.stat().st_size > 0  # an empty zip means NOAA had no file that day
         points, owners = [], []
         for r in day.itertuples():
@@ -88,7 +88,7 @@ def check(df):
 
 
 if __name__ == "__main__":
-    df = build()
+    df = build(pd.read_csv("data/daily.csv", usecols=["city", "date", "wind_u", "wind_v"]))
     check(df)
     df.to_csv("data/upwind_smoke.csv", index=False)
     print(df.groupby("city")["upwind_smoke_max"].apply(lambda s: (s >= 2).sum()).rename("days_upwind_2plus"))

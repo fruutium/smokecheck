@@ -24,7 +24,10 @@ pip install -r requirements.txt
 python fetch_data.py
 ```
 
-No API keys are needed.
+No API keys are needed. The other `fetch_*.py` scripts build the smoke, upwind-smoke, day-ahead weather and NOAA
+forecast files. `fetch_early.py` builds `data/daily_early.csv` (2018-01-01 to 2022-08-03) and `compare_seasons.py`
+tests a model trained on those extra years; we didn't adopt it (see the notebook, section 6), so the model's
+training data is still the table above.
 
 ## Data sources
 

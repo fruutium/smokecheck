@@ -39,9 +39,9 @@ def get(url):
         raise
 
 
-def download(day):
-    """Save one day's zip in data/raw/hms/, unless it is already there (so reruns are fast)."""
-    path = RAW / f"hms_smoke{day:%Y%m%d}.zip"
+def download(day, raw=RAW):
+    """Save one day's zip in data/raw/hms/ (or `raw`), unless it is already there (so reruns are fast)."""
+    path = raw / f"hms_smoke{day:%Y%m%d}.zip"
     if path.exists():
         return
     url = f"{URL}/{day:%Y}/{day:%m}/{path.name}"
@@ -59,21 +59,21 @@ def smoke_levels(path):
     levels = [0] * len(CITIES)
     for item in shapefile.Reader(str(path)).iterShapeRecords():
         level = LEVEL[item.record["Density"]]
-        # Every outline in 2022-2025 is one simple ring (we checked), so one Path per outline is enough.
+        # Every outline in 2018-2025 is one simple ring (we checked), so one Path per outline is enough.
         inside = Path(item.shape.points).contains_points(CITY_POINTS)
         levels = [max(old, level) if hit else old for old, hit in zip(levels, inside)]
     return levels
 
 
-def build():
-    RAW.mkdir(parents=True, exist_ok=True)
-    days = pd.date_range(START, END)
+def build(start=START, end=END, raw=RAW):
+    raw.mkdir(parents=True, exist_ok=True)
+    days = pd.date_range(start, end)
     # 8 downloads at a time: fast enough, and still polite to NOAA's server.
     with ThreadPoolExecutor(max_workers=8) as pool:
-        list(pool.map(download, days))
+        list(pool.map(lambda day: download(day, raw), days))
     rows = []
     for day in days:
-        path = RAW / f"hms_smoke{day:%Y%m%d}.zip"
+        path = raw / f"hms_smoke{day:%Y%m%d}.zip"
         has_file = path.stat().st_size > 0
         # No file means we don't know. We record smoke = 0 but flag it in hms_file,
         # so it can be told apart from "analysts looked and drew no plume here".

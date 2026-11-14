@@ -29,12 +29,12 @@ CITIES = {
 RAW = pathlib.Path("data/raw")
 
 
-def epa_daily():
+def epa_daily(years=range(int(START[:4]), int(END[:4]) + 1), raw=RAW):
     """Observed daily mean PM2.5 per city: average over all EPA monitors in the metro area."""
-    RAW.mkdir(parents=True, exist_ok=True)
+    raw.mkdir(parents=True, exist_ok=True)
     frames = []
-    for year in range(int(START[:4]), int(END[:4]) + 1):
-        path = RAW / f"daily_88101_{year}.zip"
+    for year in years:
+        path = raw / f"daily_88101_{year}.zip"
         if not path.exists():
             urllib.request.urlretrieve(f"https://aqs.epa.gov/aqsweb/airdata/{path.name}", path)
         frames.append(pd.read_csv(path, dtype=str, usecols=[
@@ -65,12 +65,12 @@ def open_meteo_hourly(base_url, lat, lon, variables, start=START, end="2026-01-0
     return pd.DataFrame(hourly).assign(time=lambda d: pd.to_datetime(d["time"])).set_index("time")
 
 
-def model_daily(city):
+def model_daily(city, start=START, end="2026-01-01"):
     """CAMS PM2.5 and weather for one city, averaged over the same local-standard-time day EPA uses."""
     _cbsa, lat, lon, utc_offset = CITIES[city]
-    cams = open_meteo_hourly("https://air-quality-api.open-meteo.com/v1/air-quality", lat, lon, ["pm2_5"])
+    cams = open_meteo_hourly("https://air-quality-api.open-meteo.com/v1/air-quality", lat, lon, ["pm2_5"], start, end)
     wx = open_meteo_hourly("https://historical-forecast-api.open-meteo.com/v1/forecast", lat, lon, [
-        "temperature_2m", "relative_humidity_2m", "precipitation", "wind_speed_10m", "wind_direction_10m"])
+        "temperature_2m", "relative_humidity_2m", "precipitation", "wind_speed_10m", "wind_direction_10m"], start, end)
     h = cams.join(wx)
     # Wind direction can't be averaged as an angle (350° and 10° would average to 180°),
     # so split the wind into west-to-east (u) and south-to-north (v) parts and average those.
