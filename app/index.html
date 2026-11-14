@@ -108,7 +108,7 @@ body[data-view="results"] .scrim { opacity: .84; }
 .pick { margin-left: auto; display: flex; align-items: center; gap: 2px; color: var(--dim); }
 .pick svg { flex: none; width: 16px; height: 16px; }
 .pick select {
-  appearance: none; min-height: 44px; padding: 0 22px 0 6px; border: 0; border-radius: 4px; cursor: pointer;
+  appearance: none; field-sizing: content; min-height: 44px; padding: 0 22px 0 6px; border: 0; border-radius: 4px; cursor: pointer;
   font: inherit; font-size: 15px; color: inherit; color-scheme: dark; text-align-last: right;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%23f5f2ea' stroke-width='1.8'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E") no-repeat right 4px center / 12px;
 }
@@ -581,7 +581,8 @@ function go(target, next) {
     .fromTo('#stamp', { autoAlpha: 0, scale: 1.08 }, { autoAlpha: 1, scale: 1, duration: 0.35, ease: 'power3.out' }, seconds);
   if (headline && next.kind === headline.kind && next.lead === headline.lead && next.word === headline.word) return;
   const swap = () => { setHeadline(next); enterHeadline(); };
-  if (headline) counting.to('#lead-line, #word', { autoAlpha: 0, y: -10, duration: 0.18, ease: 'power2.in' }, at).call(swap, null, at + 0.18);
+  // The old words leave at once, so they never sit under a new city or day; the new words land as the count crosses the line.
+  if (headline) counting.to('#lead-line, #word', { autoAlpha: 0, y: -10, duration: 0.18, ease: 'power2.in' }, 0).call(swap, null, Math.max(at, 0.18));
   else if (at > 0) counting.call(swap, null, at);
   else swap();   // first words and no line to cross: show them now, without waiting for the next animation frame
 }
@@ -700,7 +701,7 @@ function stepDay(side) {   // side is 'before' or 'after'
 }
 
 for (const tab of document.querySelectorAll('.views button')) tab.onclick = () => show(tab.dataset.view);
-$('#city').onchange = () => { state.city = $('#city').value; saveCity(state.city); draw(); };
+$('#city').onchange = () => { state.city = $('#city').value; saveCity(state.city); $('#city').blur(); draw(); };   // blur: the arrow keys go back to changing the day
 $('#prev').onclick = () => stepDay('before');
 $('#next').onclick = () => stepDay('after');
 $('#day').onchange = () => {
