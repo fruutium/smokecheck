@@ -23,7 +23,7 @@
 # **How to run:** Runtime → Run all. It needs no API keys or uploads, and finishes in under a minute.
 
 # %%
-# Our numbers come from scikit-learn 1.9.1. Older versions (which Colab may have) catch 17 of the 35 bad days instead of 18.
+# Our numbers come from scikit-learn 1.9.1. Older versions (which Colab may have) give slightly different warning counts.
 # %pip install -q scikit-learn==1.9.1
 
 # %% [markdown]
@@ -295,6 +295,9 @@ print(pd.DataFrame({col: score(train, col) for col in FORECASTS + ["pred_trees_l
 # NOAA maps) and one is a December day in Detroit; the September 2020 western smoke never pushed a city's daily
 # average above 35. Before running the comparison we wrote down the rule: adopt the longer model only if, on the same 2022-2024 days, its average error is lower
 # **and** its warning cost (5 × missed + false alarms) isn't higher. `compare_seasons.py` hides one year at a time:
+#
+# (This comparison was run before we switched to the median-of-copies cut-off, so its cut-offs are the single
+# lowest-cost ones; the error column doesn't depend on that.)
 #
 # | Training-year check, 2022-08-07 to 2024 (38 bad days) | average error | warn above | caught | missed | false alarms | cost | arrival days caught |
 # |---|---|---|---|---|---|---|---|
