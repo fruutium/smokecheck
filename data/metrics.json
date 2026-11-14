@@ -4,9 +4,9 @@
  "warn_at": {
   "pred_persistence": 37.0,
   "pred_climatology": 19.5,
-  "pred_noaa": 45.0,
-  "pred_cams": 29.5,
-  "pred_model": 24.0
+  "pred_noaa": 52.5,
+  "pred_cams": 30.0,
+  "pred_model": 24.5
  },
  "test_period": [
   "2025-01-01",
@@ -37,30 +37,30 @@
    "mae": 3.2,
    "days": 2190,
    "bad_days": 35,
-   "warn_at": 45.0,
-   "caught": 6,
-   "missed": 29,
+   "warn_at": 52.5,
+   "caught": 2,
+   "missed": 33,
    "false_alarms": 1,
-   "recall": 0.171
+   "recall": 0.057
   },
   "pred_cams": {
    "mae": 3.72,
    "days": 2190,
    "bad_days": 35,
-   "warn_at": 29.5,
+   "warn_at": 30.0,
+   "caught": 17,
+   "missed": 18,
+   "false_alarms": 17,
+   "recall": 0.486
+  },
+  "pred_model": {
+   "mae": 2.58,
+   "days": 2190,
+   "bad_days": 35,
+   "warn_at": 24.5,
    "caught": 18,
    "missed": 17,
    "false_alarms": 21,
-   "recall": 0.514
-  },
-  "pred_model": {
-   "mae": 2.59,
-   "days": 2190,
-   "bad_days": 35,
-   "warn_at": 24.0,
-   "caught": 18,
-   "missed": 17,
-   "false_alarms": 22,
    "recall": 0.514
   }
  },
@@ -90,7 +90,7 @@
     "mae": 3.07,
     "days": 365,
     "bad_days": 3,
-    "warn_at": 45.0,
+    "warn_at": 52.5,
     "caught": 0,
     "missed": 3,
     "false_alarms": 0,
@@ -100,20 +100,20 @@
     "mae": 3.95,
     "days": 365,
     "bad_days": 3,
-    "warn_at": 29.5,
+    "warn_at": 30.0,
     "caught": 2,
     "missed": 1,
-    "false_alarms": 7,
+    "false_alarms": 6,
     "recall": 0.667
    },
    "pred_model": {
-    "mae": 2.41,
+    "mae": 2.4,
     "days": 365,
     "bad_days": 3,
-    "warn_at": 24.0,
+    "warn_at": 24.5,
     "caught": 1,
     "missed": 2,
-    "false_alarms": 6,
+    "false_alarms": 5,
     "recall": 0.333
    }
   },
@@ -142,7 +142,7 @@
     "mae": 3.19,
     "days": 365,
     "bad_days": 6,
-    "warn_at": 45.0,
+    "warn_at": 52.5,
     "caught": 0,
     "missed": 6,
     "false_alarms": 0,
@@ -152,17 +152,17 @@
     "mae": 3.27,
     "days": 365,
     "bad_days": 6,
-    "warn_at": 29.5,
+    "warn_at": 30.0,
     "caught": 5,
     "missed": 1,
-    "false_alarms": 1,
+    "false_alarms": 0,
     "recall": 0.833
    },
    "pred_model": {
-    "mae": 2.47,
+    "mae": 2.46,
     "days": 365,
     "bad_days": 6,
-    "warn_at": 24.0,
+    "warn_at": 24.5,
     "caught": 3,
     "missed": 3,
     "false_alarms": 4,
@@ -194,7 +194,7 @@
     "mae": 3.06,
     "days": 365,
     "bad_days": 6,
-    "warn_at": 45.0,
+    "warn_at": 52.5,
     "caught": 1,
     "missed": 5,
     "false_alarms": 0,
@@ -204,17 +204,17 @@
     "mae": 3.35,
     "days": 365,
     "bad_days": 6,
-    "warn_at": 29.5,
-    "caught": 2,
-    "missed": 4,
-    "false_alarms": 3,
-    "recall": 0.333
+    "warn_at": 30.0,
+    "caught": 1,
+    "missed": 5,
+    "false_alarms": 2,
+    "recall": 0.167
    },
    "pred_model": {
     "mae": 2.65,
     "days": 365,
     "bad_days": 6,
-    "warn_at": 24.0,
+    "warn_at": 24.5,
     "caught": 4,
     "missed": 2,
     "false_alarms": 3,
@@ -246,27 +246,27 @@
     "mae": 3.25,
     "days": 365,
     "bad_days": 9,
-    "warn_at": 45.0,
-    "caught": 3,
-    "missed": 6,
+    "warn_at": 52.5,
+    "caught": 0,
+    "missed": 9,
     "false_alarms": 0,
-    "recall": 0.333
+    "recall": 0.0
    },
    "pred_cams": {
     "mae": 3.27,
     "days": 365,
     "bad_days": 9,
-    "warn_at": 29.5,
+    "warn_at": 30.0,
     "caught": 4,
     "missed": 5,
-    "false_alarms": 2,
+    "false_alarms": 1,
     "recall": 0.444
    },
    "pred_model": {
-    "mae": 2.67,
+    "mae": 2.65,
     "days": 365,
     "bad_days": 9,
-    "warn_at": 24.0,
+    "warn_at": 24.5,
     "caught": 5,
     "missed": 4,
     "false_alarms": 3,
@@ -298,17 +298,17 @@
     "mae": 3.97,
     "days": 365,
     "bad_days": 9,
-    "warn_at": 45.0,
-    "caught": 2,
-    "missed": 7,
+    "warn_at": 52.5,
+    "caught": 1,
+    "missed": 8,
     "false_alarms": 1,
-    "recall": 0.222
+    "recall": 0.111
    },
    "pred_cams": {
     "mae": 4.58,
     "days": 365,
     "bad_days": 9,
-    "warn_at": 29.5,
+    "warn_at": 30.0,
     "caught": 5,
     "missed": 4,
     "false_alarms": 4,
@@ -318,7 +318,7 @@
     "mae": 3.03,
     "days": 365,
     "bad_days": 9,
-    "warn_at": 24.0,
+    "warn_at": 24.5,
     "caught": 4,
     "missed": 5,
     "false_alarms": 4,
@@ -350,7 +350,7 @@
     "mae": 2.67,
     "days": 365,
     "bad_days": 2,
-    "warn_at": 45.0,
+    "warn_at": 52.5,
     "caught": 0,
     "missed": 2,
     "false_alarms": 0,
@@ -360,17 +360,17 @@
     "mae": 3.86,
     "days": 365,
     "bad_days": 2,
-    "warn_at": 29.5,
+    "warn_at": 30.0,
     "caught": 0,
     "missed": 2,
     "false_alarms": 4,
     "recall": 0.0
    },
    "pred_model": {
-    "mae": 2.31,
+    "mae": 2.29,
     "days": 365,
     "bad_days": 2,
-    "warn_at": 24.0,
+    "warn_at": 24.5,
     "caught": 1,
     "missed": 1,
     "false_alarms": 2,
@@ -404,30 +404,30 @@
     "mae": 2.75,
     "days": 2068,
     "bad_days": 12,
-    "warn_at": 45.0,
-    "caught": 5,
-    "missed": 7,
+    "warn_at": 52.5,
+    "caught": 2,
+    "missed": 10,
     "false_alarms": 0,
-    "recall": 0.417
+    "recall": 0.167
    },
    "pred_cams": {
     "mae": 3.31,
     "days": 2068,
     "bad_days": 12,
-    "warn_at": 29.5,
+    "warn_at": 30.0,
     "caught": 6,
     "missed": 6,
-    "false_alarms": 11,
+    "false_alarms": 9,
     "recall": 0.5
    },
    "pred_model": {
-    "mae": 2.24,
+    "mae": 2.23,
     "days": 2068,
     "bad_days": 12,
-    "warn_at": 24.0,
+    "warn_at": 24.5,
     "caught": 4,
     "missed": 8,
-    "false_alarms": 14,
+    "false_alarms": 13,
     "recall": 0.333
    }
   },
@@ -456,27 +456,27 @@
     "mae": 10.82,
     "days": 122,
     "bad_days": 23,
-    "warn_at": 45.0,
-    "caught": 1,
-    "missed": 22,
+    "warn_at": 52.5,
+    "caught": 0,
+    "missed": 23,
     "false_alarms": 1,
-    "recall": 0.043
+    "recall": 0.0
    },
    "pred_cams": {
     "mae": 10.53,
     "days": 122,
     "bad_days": 23,
-    "warn_at": 29.5,
-    "caught": 12,
-    "missed": 11,
-    "false_alarms": 10,
-    "recall": 0.522
+    "warn_at": 30.0,
+    "caught": 11,
+    "missed": 12,
+    "false_alarms": 8,
+    "recall": 0.478
    },
    "pred_model": {
     "mae": 8.63,
     "days": 122,
     "bad_days": 23,
-    "warn_at": 24.0,
+    "warn_at": 24.5,
     "caught": 14,
     "missed": 9,
     "false_alarms": 8,
@@ -509,31 +509,31 @@
    "mae": 3.38,
    "days": 5250,
    "bad_days": 38,
-   "warn_at": 45.0,
-   "caught": 7,
-   "missed": 31,
-   "false_alarms": 27,
-   "recall": 0.184
+   "warn_at": 52.5,
+   "caught": 6,
+   "missed": 32,
+   "false_alarms": 23,
+   "recall": 0.158
   },
   "pred_cams": {
    "mae": 3.79,
    "days": 5268,
    "bad_days": 38,
-   "warn_at": 29.5,
-   "caught": 28,
-   "missed": 10,
-   "false_alarms": 45,
-   "recall": 0.737
+   "warn_at": 30.0,
+   "caught": 27,
+   "missed": 11,
+   "false_alarms": 40,
+   "recall": 0.711
   },
   "pred_model": {
    "mae": 2.49,
    "days": 5268,
    "bad_days": 38,
-   "warn_at": 24.0,
-   "caught": 21,
-   "missed": 17,
-   "false_alarms": 26,
-   "recall": 0.553
+   "warn_at": 24.5,
+   "caught": 19,
+   "missed": 19,
+   "false_alarms": 22,
+   "recall": 0.5
   }
  },
  "forecast_range": {
@@ -544,76 +544,76 @@
    7.1,
    8.5,
    10.4,
-   24.0
+   24.5
   ],
   "offsets_low_high": [
    [
-    -1.57,
-    2.45
+    -1.58,
+    2.46
    ],
    [
-    -2.56,
-    2.78
+    -2.58,
+    2.64
    ],
    [
-    -3.06,
-    3.19
+    -3.0,
+    3.36
    ],
    [
-    -3.64,
-    4.04
+    -3.62,
+    4.07
    ],
    [
-    -4.68,
-    6.91
+    -4.93,
+    6.88
    ],
    [
-    -27.41,
-    28.03
+    -27.74,
+    28.6
    ]
   ],
   "coverage_train_in_sample": {
    "all": {
     "days": 5268,
-    "inside": 0.8,
-    "median_width": 6.2
+    "inside": 0.799,
+    "median_width": 6.4
    },
    "top_bin": {
-    "days": 47,
-    "inside": 0.787,
-    "median_width": 55.4
+    "days": 41,
+    "inside": 0.805,
+    "median_width": 56.3
    },
    "bad_days": {
     "days": 38,
-    "inside": 0.368,
-    "median_width": 52.5
+    "inside": 0.342,
+    "median_width": 32.6
    },
    "smoke_days": {
     "days": 673,
-    "inside": 0.734,
+    "inside": 0.733,
     "median_width": 7.7
    }
   },
   "coverage_test": {
    "all": {
     "days": 2190,
-    "inside": 0.792,
-    "median_width": 5.3
+    "inside": 0.796,
+    "median_width": 5.2
    },
    "top_bin": {
-    "days": 40,
-    "inside": 0.775,
-    "median_width": 55.4
+    "days": 39,
+    "inside": 0.821,
+    "median_width": 56.3
    },
    "bad_days": {
     "days": 35,
-    "inside": 0.314,
-    "median_width": 52.7
+    "inside": 0.371,
+    "median_width": 53.7
    },
    "smoke_days": {
     "days": 122,
     "inside": 0.623,
-    "median_width": 11.6
+    "median_width": 11.8
    }
   }
  }

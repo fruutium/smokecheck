@@ -97,7 +97,9 @@ def build():
     df["lat"] = df["city"].map(lambda c: CITIES[c][1])
     df["lon"] = df["city"].map(lambda c: CITIES[c][2])
     df["split"] = np.where(df["date"] <= TRAIN_END, "train", "test")
-    return df.sort_values(["city", "date"]).round(2).reset_index(drop=True)
+    df = df.sort_values(["city", "date"]).reset_index(drop=True)
+    # 3 decimals for the measurement, so one-decimal displays round right (65.648 -> 65.6, not 65.65 -> 65.7)
+    return df.round(2).assign(obs_pm25=df["obs_pm25"].round(3))
 
 
 def check(df):

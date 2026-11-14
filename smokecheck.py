@@ -22,6 +22,10 @@
 #
 # **How to run:** Runtime → Run all. It needs no API keys or uploads, and finishes in under a minute.
 
+# %%
+# Our numbers come from scikit-learn 1.9.1. Older versions (which Colab may have) catch 17 of the 35 bad days instead of 18.
+# %pip install -q scikit-learn==1.9.1
+
 # %% [markdown]
 # ## 1. Load the data
 #
@@ -208,10 +212,15 @@ print("bad days in each training block:", train.groupby("block")["bad"].sum().to
 # **The warning rule.** A forecast becomes a warning ("move practice indoors") when it goes above a cut-off.
 # The cut-off doesn't have to be 35: a forecast that tends to come in low should warn earlier.
 #
-# We decided before looking at any results that **one missed bad day costs as much as 5 false alarms**.
-# Sending kids to run in smoke is much worse than an unneeded indoor practice, but if SmokeCheck cries wolf every
-# week, the athletic director stops listening. For **every** forecast, baselines included, we pick the cut-off
-# with the lowest cost on the training years, so the comparison is fair.
+# We fixed the rule that **one missed bad day costs as much as 5 false alarms** before scoring our model on 2025
+# (we had already seen the baselines' 2025 numbers at a plain 35 line). Sending kids to run in smoke is much worse
+# than an unneeded indoor practice, but if SmokeCheck cries wolf every week, the athletic director stops listening.
+#
+# **Picking the cut-off.** On the training years, many cut-offs cost almost the same, so simply taking the one with
+# the lowest cost picks out noise. (We found this the hard way: storing the readings with one more decimal place,
+# a change of at most 0.005 µg/m³, moved our model's lowest-cost cut-off from 24 to 29.5.) So for **every**
+# forecast, baselines included, we make 200 reshuffled copies of the training years by drawing whole calendar weeks
+# at random (a smoke event stays together), find the lowest-cost cut-off on each copy, and use the **median**.
 
 # %%
 COST_OF_A_MISS = 5
@@ -223,12 +232,28 @@ def warning_counts(rows, col, warn_at):
             "false_alarms": int((~real & warned).sum())}
 
 
-def best_cut_off(rows, col):
+CUT_OFFS = np.arange(10, 60.5, 0.5)  # every cut-off we consider, in µg/m³
+
+
+def cost_by_cut_off(rows, col):
+    """5 x missed + false alarms, for every cut-off in CUT_OFFS at once."""
     rows = rows[rows[col].notna()]  # NOAA has no forecast for 3 run days in 2022-23
-    def cost(t):
-        c = warning_counts(rows, col, t)
-        return COST_OF_A_MISS * c["missed"] + c["false_alarms"]
-    return min(np.arange(10, 45.5, 0.5), key=cost)
+    real = rows["obs_pm25"].to_numpy()[:, None] > THRESHOLD
+    warned = rows[col].to_numpy()[:, None] > CUT_OFFS[None, :]
+    return COST_OF_A_MISS * (real & ~warned).sum(axis=0) + (~real & warned).sum(axis=0)
+
+
+def best_cut_off(rows, col, copies=200):
+    """Median, over copies of the rows made by drawing whole weeks with replacement, of the lowest-cost cut-off."""
+    week = pd.to_datetime(rows["date"]).dt.to_period("W").astype(str).to_numpy()
+    rows_of_week = {w: np.flatnonzero(week == w) for w in np.unique(week)}
+    weeks = list(rows_of_week)
+    rng = np.random.default_rng(0)  # fixed seed, so the notebook gives the same answer every run
+    best = []
+    for _ in range(copies):
+        picked = np.concatenate([rows_of_week[w] for w in rng.choice(weeks, len(weeks))])
+        best.append(CUT_OFFS[np.argmin(cost_by_cut_off(rows.iloc[picked], col))])
+    return float(np.median(best))
 
 
 FORECASTS = ["pred_persistence", "pred_climatology", "pred_noaa", "pred_cams", "pred_model"]
@@ -380,6 +405,20 @@ print(f"Model false alarms in 2025: {len(false_alarms)}")
 print(false_alarms[["date", "city", "obs_pm25", "obs_1", "pred_model", "smoke"]].round(1).to_string(index=False))
 
 # %% [markdown]
+# **Without picking a cut-off at all.** Warning counts depend on where the line is drawn, so here is the 2025 cost
+# (5 × missed + false alarms) for every possible cut-off. This only describes 2025; nothing is chosen from it.
+# A forecast whose curve sits lower over a wide range is better however you set the line.
+
+# %%
+curves = pd.DataFrame({c.removeprefix("pred_"): cost_by_cut_off(test, c) for c in ["pred_model", "pred_noaa", "pred_persistence", "pred_cams"]},
+                      index=CUT_OFFS)
+ax = curves.plot(figsize=(9, 3.5), title="2025 cost of each forecast's warnings, for every possible cut-off")
+ax.set_xlabel("warn when the forecast is above (µg/m³)"); ax.set_ylabel("5 × missed + false alarms")
+print("lowest possible 2025 cost (with hindsight) and where:")
+print(pd.DataFrame({"lowest_cost": curves.min(), "at_cut_off": curves.idxmin()}))
+print("\n2025 cost at our pre-set cut-offs:", {c: int(curves.loc[warn_at["pred_" + c], c]) for c in curves})
+
+# %% [markdown]
 # **By city, and smoke days vs clean days** (average error, µg/m³)
 
 # %%
@@ -434,7 +473,8 @@ metrics["forecast_range"] = {"method": "10th-90th percentile of training out-of-
                              "level": 0.8, "bin_edges": RANGE_EDGES, "offsets_low_high": offsets.round(2).values.tolist(),
                              "coverage_train_in_sample": coverage(train), "coverage_test": coverage(test)}
 os.makedirs("data", exist_ok=True)
-pd.concat([train[cols], test[cols]]).sort_values(["city", "date"]).round(2).to_csv("data/predictions.csv", index=False)
+out = pd.concat([train[cols], test[cols]]).sort_values(["city", "date"])
+out.round(2).assign(obs_pm25=out["obs_pm25"].round(3)).to_csv("data/predictions.csv", index=False)  # 3 decimals: see fetch_data.py
 with open("data/metrics.json", "w") as f:
     json.dump(metrics, f, indent=1)
 print("saved data/predictions.csv and data/metrics.json")
