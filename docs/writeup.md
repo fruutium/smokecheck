@@ -39,16 +39,16 @@ We started from suggested project 4.3.2 (next-day air quality forecast). Instead
 
 **Where it fails.** When smoke *arrives* (yesterday clean, today bad), SmokeCheck caught only 6 of 21 days (NOAA 4, CAMS archive 11). On July 31 in Chicago, SmokeCheck said 13.9 and NOAA 13.7, and the air measured 65.7: our model leans on today's readings, which are still clean the day before smoke arrives. When smoke *lingers*, SmokeCheck caught 12 of 14 and NOAA 2. On August 1 in Chicago, NOAA said 8.7, SmokeCheck said 54.8, and the air measured 45.5.
 
-**Tried and dropped:** a tree model predicting the PM2.5 level directly caught 1 of 38 bad training days, because trees can't predict above values they've seen.
+**Tried and dropped:** a tree model predicting the PM2.5 level directly caught 1 of 38 bad training days, because trees can't predict above values they've seen. We also added NOAA-mapped smoke 300–900 km upwind of each city: it preceded 16 of 21 training arrival days, but the model's error didn't move (2.49 either way), because without 2023 the training years have only 2 bad days to learn from.
 
-**Honesty notes:** one early scratch run looked at 2025 before we fixed our process; every choice since used 2022–2024 only. NOAA upgraded its model in May 2024, between our training and test years. Using the real weather instead of the forecast changes our error by only 0.01, so weather isn't leaking the answer.
+**Honesty notes:** one early scratch run looked at 2025 before we fixed our process; every choice since used 2022–2024 only. NOAA upgraded its model in May 2024, between our training and test years. Using the real weather instead of the forecast changes our error by only 0.01, so weather isn't leaking the answer. With 35 bad test days, catch counts are noisy; the average error is the steadier number.
 
 ## What we'd do next
-- Catch arriving smoke by adding NOAA-mapped smoke upwind of each city, chosen on training years only.
+- Train on more smoke seasons (2018–2021, from EPA and NOAA's forecast archive) so the model has enough smoke events to use the upwind signal we found.
 - Forecast practice hours (3–6 PM) instead of the daily average, and test it with a real athletic director.
 
 ## Sources
 - **Data:** [EPA AirData daily PM2.5 (88101)](https://aqs.epa.gov/aqsweb/airdata/download_files.html) · [NOAA NAQFC on AWS](https://registry.opendata.aws/noaa-nws-naqfc-pds/) (bias-corrected, day-before 12Z run, nearest grid cell) · [Open-Meteo Air Quality API](https://open-meteo.com/en/docs/air-quality-api) (Copernicus Atmosphere Monitoring Service global forecasts) · Open-Meteo [Historical Forecast](https://open-meteo.com/en/docs/historical-forecast-api) and [Previous Runs](https://open-meteo.com/en/docs/previous-runs-api) APIs · [NOAA HMS smoke polygons](https://www.ospo.noaa.gov/products/land/hms.html)
 - **Libraries:** scikit-learn, pandas, NumPy, matplotlib, pyshp, eccodes, jupytext; Gradio and Plotly for the app
 - **Starting point:** Veritas AI Project Briefs, suggested project 4.3.2
-- **AI tools:** Claude (Claude Code), used for [say exactly what: writing data-loading, model and app code, which we read and can explain; pre-event dataset research; drafting this write-up]
+- **AI tools:** Claude (Anthropic), through Claude Code. It wrote most of the code (the data scripts, the model and evaluation notebook, and the Gradio app) and ran the experiments. Before the event it researched datasets and project ideas; during it, it checked which forecast archives were truly day-ahead and drafted this write-up and the video script, which we edited. We chose the track and project, picked which improvements to try from the options it proposed (an upwind-smoke feature, which we dropped, and the NOAA baseline), and read through all the code so we can explain it.
