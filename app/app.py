@@ -7,7 +7,9 @@ import gradio as gr
 import pandas as pd
 import plotly.express as px
 
-DATA = Path(__file__).parent.parent / "data"
+# In the repo the data is in ../data; in the Hugging Face Space it sits next to app.py, in ./data.
+HERE = Path(__file__).parent
+DATA = HERE / "data" if (HERE / "data").exists() else HERE.parent / "data"
 DEFAULT_LIMIT = 35  # µg/m³ daily mean; only used when metrics.json does not say otherwise
 START_CITY, START_DATE = "Milwaukee", "2025-07-31"  # the headline smoke day
 # Readable names for the forecast columns, in table order. Any other pred_* column shows under its own name.

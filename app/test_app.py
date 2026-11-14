@@ -1,4 +1,5 @@
 """Plain checks for app.py. Run:  .venv/bin/python app/test_app.py"""
+import importlib.util
 import shutil
 import tempfile
 from pathlib import Path
@@ -126,7 +127,23 @@ if (app.DATA / "predictions.csv").exists() and (app.DATA / "metrics.json").exist
     by_smoke = app.grouped_scoreboard(metrics["by_smoke"], "Day type")
     assert set(by_smoke["Day type"]) == {"Clean day", "Smoke day"}
 
-# 5. Without metrics.json nothing breaks and the bad-day limit is 35.
+# 5. The Hugging Face Space layout: app.py with data/ next to it (no daily.csv, no ../data).
+# A COPY of app.py in a temp folder, loaded under another name so it does not replace `app`.
+if (app.DATA / "predictions.csv").exists() and (app.DATA / "metrics.json").exists():
+    with tempfile.TemporaryDirectory() as folder:
+        space = Path(folder) / "space"
+        (space / "data").mkdir(parents=True)
+        shutil.copy(Path(app.__file__), space / "app.py")
+        shutil.copy(app.DATA / "predictions.csv", space / "data")
+        shutil.copy(app.DATA / "metrics.json", space / "data")
+        spec = importlib.util.spec_from_file_location("space_app", space / "app.py")
+        space_app = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(space_app)
+        assert space_app.DATA == space / "data"
+        html = space_app.card(space_app.ROWS, "Milwaukee", "2025-07-31", space_app.METRICS)
+        assert space_app.INDOORS in html and "<b>26.8</b>" in html
+
+# 6. Without metrics.json nothing breaks and the bad-day limit is 35.
 assert app.bad_day_limit({}) == 35
 
 print("all checks passed")
