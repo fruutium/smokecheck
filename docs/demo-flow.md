@@ -3,15 +3,14 @@
 Plan for the Gradio app. The app is the optional extra on top of the hub's Colab notebook, so it stays small.
 It reads two files and nothing else: `data/predictions.csv` and `data/metrics.json`. It never imports model code.
 
-## The 60 seconds a judge sees
-1. The app opens on **Chicago, Thursday July 31, 2025** (measured 65.7 µg/m³; the day before was 12.4; raw CAMS said 34.3). No clicks needed to see a result.
-2. **Verdict card**, the biggest thing on the page: "Move practice indoors" or "OK to practice outside", with the forecast number and the limit of 35 µg/m³.
-3. **Three numbers** under it: "Raw CAMS estimate said X · SmokeCheck said Y · Monitors measured Z". Persistence is shown smaller.
-4. **Map** of the Midwest cities, one dot per city, colored by SmokeCheck's forecast for that day (green below the limit, orange/red above).
-5. Drag the **date slider** a few days either way: the dots and the verdict change as the smoke arrives and leaves.
-6. Switch **city** in the dropdown: same day, different verdict.
-7. Tab **"Does it work?"**: the baseline table (persistence, climatology, raw CAMS, SmokeCheck) from `metrics.json`, with the split by city and by smoke vs clean days.
-8. Tab **"Where it fails"**: the worst misses in the 2025 test set, real rows, largest error first.
+## The 60 seconds a judge sees (three stops, one city change, one slider step)
+1. Opens on **Milwaukee, July 31, 2025**, no clicks needed. SmokeCheck forecast 27.6, above its warning line of 24 → **Move practice indoors**. Measured 83.7. (Our success.)
+2. The card says why the line is 24, not 35: forecasts run low on smoke days, and the line was set on 2022–2024 so one missed bad day costs as much as 5 false alarms.
+3. Under the card, each forecast with its own call: Raw CAMS estimate 38.5 → warn (line 29.5) · persistence 32.3 → outside (line 37) · monitors measured 83.7 (a bad day).
+4. Switch city to **Chicago**, same day: SmokeCheck 13.9 → outside, CAMS 34.3 → warn, measured 65.7. (Our miss: smoke arrived overnight.)
+5. Step the slider to **August 1**: SmokeCheck 54.8 → warn, CAMS 19.1 → outside, measured 45.5. (CAMS's miss: smoke lingering.)
+6. Tab **"Does it work?"**: one row per forecast (MAE, warns above, bad days caught of 35, false alarms), then smoke vs clean days, then by city.
+7. Tab **"Where it fails"**: the worst misses in 2025, with a note that smoke-arrival days are the weak spot.
 
 Footer on every tab: "Open-Meteo air-quality values are model estimates, not measurements. Prototype, not health advice."
 
@@ -20,7 +19,8 @@ Footer on every tab: "Open-Meteo air-quality values are model estimates, not mea
 |---|---|
 | City dropdown, map dots | `city`, `lat`, `lon` |
 | Date slider | `date`, test rows only (`split == "test"`) |
-| Verdict | `pred_model` compared with `threshold` from `metrics.json` |
+| Verdict, map colors | `pred_model` compared with `warn_at["pred_model"]` (24); each baseline uses its own `warn_at` |
+| "Was it a bad day?" | `obs_pm25` compared with `threshold` (35) |
 | Three numbers | `pred_cams`, `pred_model`, `obs_pm25` (+ `pred_persistence`) |
 | "Does it work?" table | `metrics.json` |
 | "Where it fails" list | rows sorted by `abs(pred_model - obs_pm25)`, test only |
@@ -41,5 +41,5 @@ Footer on every tab: "Open-Meteo air-quality values are model estimates, not mea
 - A "reveal what happened" button: the measured value is simply always shown.
 
 ## Decided
-- **Two verdict levels** (Aiden, Nov 13): "OK to practice outside" / "Move practice indoors", split at the single 35 µg/m³ limit. A third level would need a second cutoff we'd have to justify.
-- **Two colors to match:** green at or below the limit, red above it, on the verdict card and the map dots.
+- **Two verdict levels** (Aiden, Nov 13): "OK to practice outside" / "Move practice indoors". Originally split at 35; since Nov 14 each forecast uses its own warning line from `warn_at` (SmokeCheck 24), and 35 only defines a bad day.
+- **Two colors to match:** green at or below the warning line, red above it, on the verdict card and the map dots.

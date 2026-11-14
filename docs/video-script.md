@@ -1,36 +1,35 @@
 # SmokeCheck video script (2:00 max)
 
-<!-- DRAFT. [Brackets] wait on real numbers. Screen recording with voice over, no editing needed.
-     About 260 words of voiceover = roughly 1:50 at a normal pace. Read it aloud with a timer before recording. -->
+<!-- Numbers from metrics.json / predictions.csv (main 65b1456). Re-check before recording.
+     Screen recording with voice over, no editing needed. About 270 words of voiceover, roughly 1:55. Read it aloud with a timer first. -->
 
 **The one takeaway (same sentence in the video, the write-up and finals):**
-> [On 2025 smoke days, correcting the CAMS estimate with local monitors caught A of N unhealthy days; CAMS alone caught B, with C false alarms.]
-> If we don't beat CAMS, the takeaway becomes that finding, said plainly.
+> SmokeCheck's forecast is the closest every day, but on warnings it ties the CAMS model: it catches smoke that lingers, and CAMS catches smoke as it arrives.
 
 ## 1. The problem · 0:00–0:15
 **Screen:** a plain title slide: "Practice outside, or move indoors?"
-**Say:** "When wildfire smoke drifts over the Midwest, a high-school athletic director has to decide the day before whether practice stays outside. The forecasts they can look up come from big global models, and those can miss how bad one city gets."
+**Say:** "When wildfire smoke drifts over the Midwest, a high-school athletic director has to decide the day before whether practice stays outside. Last July, Chicago went from clean air to almost twice the EPA limit overnight."
 
 ## 2. The demo · 0:15–1:15
-**Screen:** the app, opened on Chicago, Thursday July 31, 2025.
-**Say:** "This is SmokeCheck. Pick a city and a day. Here's Chicago on July 31st, 2025, a day our model never saw in training."
-**Do:** point at the verdict card.
-**Say:** "SmokeCheck says [verdict]: it forecast [Y] micrograms, against a limit of 35. All three simple forecasts said practice outside: yesterday's reading was 12, the typical value for that date is 11, and the raw CAMS estimate said 34, just under the line. The monitors measured 66."
-**Do:** drag the date slider back two days, then forward through the event.
-**Say:** "Dragging through the week, you can watch the smoke arrive and the call change city by city."
-**Do:** switch the city to Milwaukee.
-**Say:** "Milwaukee on the same day: [verdict], and that was [right / wrong]. Monitors there measured 84."
+**Screen:** the app, opened on Milwaukee, July 31, 2025.
+**Say:** "This is SmokeCheck. Pick a city and a day. Milwaukee, July 31st, 2025, a day our model never saw. SmokeCheck forecast 28 and says move practice indoors. Monitors measured 84, more than twice the limit."
+**Do:** point at the warning-line sentence on the card.
+**Say:** "It warns above 24, not 35, because its forecasts run low on smoke days. We set that line on earlier years so one missed smoke day costs as much as five false alarms."
+**Do:** switch the city to Chicago.
+**Say:** "Same day in Chicago, and here's where we fail. SmokeCheck said 14: practice outside. The CAMS model said 34 and warned. The air was 66. The smoke arrived overnight, and our model leans on today's readings, which were still clean."
+**Do:** step the slider forward one day.
+**Say:** "One day later it flips. CAMS says 19, fine. SmokeCheck says 55, move indoors. The air was 46."
 
 ## 3. How it works · 1:15–1:45
-**Screen:** the "Does it work?" tab with the baseline table.
-**Say:** "[SmokeCheck combines things known the evening before: EPA monitor readings in the city and its neighbours, NOAA's satellite smoke map, tomorrow's weather forecast, and the CAMS estimate from Open-Meteo, which is a model output, not a measurement.] We trained on 2022 to 2024 and tested on all of 2025. Against 'tomorrow equals today', SmokeCheck's error was [ ] versus [ ]. On the [N] days over the limit, it caught [A]; raw CAMS caught [B]. It raised [C] false alarms."
+**Screen:** the "Does it work?" tab.
+**Say:** "SmokeCheck combines EPA monitor readings in the city and five neighbours, NOAA's satellite smoke map, tomorrow's weather forecast and the CAMS estimate, which is a model output, not a measurement. We trained on 2022 to 2024 and tested on all of 2025. Its average error is 2.6, against 3.4 for 'tomorrow equals today' and 3.7 for CAMS. On the 35 bad days, it caught 18, the same as CAMS."
 
 ## 4. Limits and next · 1:45–2:00
 **Screen:** the "Where it fails" tab.
-**Say:** "It still misses [the main failure, in plain words]. Next we'd forecast the actual practice hours instead of the daily average, and test it with a real athletic director."
+**Say:** "It still misses most days when smoke first arrives. Next, we'd warn when either SmokeCheck or CAMS crosses its line, and test it with a real athletic director."
 
 ## Recording checklist
 - [ ] Under 2:00 on a timer
 - [ ] Every number said out loud matches the write-up table
-- [ ] "Model estimate, not a measurement" is said once
+- [ ] "Model output, not a measurement" is said once
 - [ ] Uploaded unlisted (YouTube) or Drive "anyone with the link", opened in a private window
