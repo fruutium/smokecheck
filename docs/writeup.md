@@ -16,7 +16,7 @@ When wildfire smoke drifts over the Midwest, a high-school athletic director has
 ## What we built
 SmokeCheck takes a city and a date and returns tomorrow's average fine-particle pollution (PM2.5) forecast and a verdict. For example:
 
-> Chicago, Thursday July 31, 2025 → **[verdict].** SmokeCheck forecast [Y] µg/m³ (limit 35). The raw CAMS estimate said 34.3, just under the limit. Monitors measured 65.6.
+> Chicago, Thursday July 31, 2025 → **[verdict].** SmokeCheck forecast [Y] µg/m³ (limit 35). The raw CAMS estimate said 34.3, just under the limit. Monitors measured 65.7.
 
 It runs as a function in our Colab notebook, with an optional Gradio app: a map of six Midwest cities, a date slider across 2025, and the verdict.
 
@@ -47,7 +47,7 @@ We started from suggested project 4.3.2 (next-day air quality forecast). [Instea
 
 **By city and by day type:** [where the model is better and worse: per city, smoke days vs clean days.] [Smoke days come from NOAA's satellite plume labels, which under-count smoke at ground level: 12 of the 35 bad test days had only a light plume or none.]
 
-**Why persistence isn't enough.** On July 31, 2025 smoke arrived in Chicago overnight: the day before measured 12.4, so "tomorrow = today" said the air was fine, and monitors measured 65.6. All three simple forecasts said "practice outside" that day (persistence 12.4, climatology 11.3, raw CAMS 34.3).
+**Why persistence isn't enough.** On July 31, 2025 smoke arrived in Chicago overnight: the day before measured 12.4, so "tomorrow = today" said the air was fine, and monitors measured 65.7. All three simple forecasts said "practice outside" that day (persistence 12.4, climatology 11.3, raw CAMS 34.3).
 
 **Where it fails.** [One or two real test days it got wrong, with the numbers, and why we think so. Kit guess to verify: the first day smoke arrives, when yesterday's monitors were still clean.]
 
