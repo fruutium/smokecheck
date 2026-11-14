@@ -2,6 +2,30 @@
 
 The script is `docs/video-script.md`. Everything here was captured from the real app (`app/app.py` serving `app/index.html`) in a 1280×800 browser window on Nov 14, 2026.
 
+## The produced video (what we submit)
+The video we submit is built in `../video-project/` (next to this repo, not inside it, because its recordings and renders are large). It is 1:58.5, 1920×1080, 30 frames a second, H.264.
+It shows a recording of the real app inside a window, with zooms and highlights on the numbers, between an animated opening, an animated "Does it work?" scene and a closing card. Captions and quiet music are part of the picture. We record the narration ourselves and mix it in. No AI voice.
+
+| File in `../video-project/` | What it is |
+|---|---|
+| `renders/smokecheck-demo-music-only.mp4` | The whole video with captions and music, no voice. Read along with this |
+| `renders/smokecheck-demo-picture.mp4` | The same picture with no sound, for the final mix |
+| `assets/music/bed.wav` | The music, cut to length |
+| `mix.sh` | Puts a narration recording on the video: `./mix.sh narration.m4a` writes `renders/smokecheck-demo-final.mp4` |
+| `RECORDING-GUIDE.md`, `cue-sheet.md` | The lines, when each one starts, how to record, and how to change scene lengths |
+| `CREDITS.md` | Music, fonts and tools to cite |
+
+How it is made, in order:
+1. **Record the app.** `capture/capture-app.mjs` is this folder's `capture.mjs` with two changes: it records at twice the pixels (2560×1600, so zooms stay sharp), in one take with a long hold after every click, and it writes `capture/meta.json` with the second of each click and the position of each number on the page. Same honesty notes as below: the cursor is drawn by the script and the city picker is set by the script. Start the app, then `APP=http://localhost:7863 node capture/capture-app.mjs`.
+2. **Build the page.** The video is one HTML page, `index.html`, animated with GSAP. `node build.mjs` writes it from `timing.json` (how long each scene is), `capture/meta.json` (where to cut the recording, where to zoom) and the narration from `docs/video-script.md`. Captions are timed at 150 words a minute. The build stops if a scene is too short for its words, if the video would pass 2:00, or if the numbers in the recording differ from the script's.
+3. **Render.** HyperFrames (`npx hyperframes render --quality high --output renders/smokecheck-demo-music-only.mp4`) opens the page in headless Chrome, draws all 3,555 frames and encodes them with the music. About five minutes.
+4. **Strip the sound** for the mix: `ffmpeg -i renders/smokecheck-demo-music-only.mp4 -an -c:v copy renders/smokecheck-demo-picture.mp4`.
+5. **Mix the voice.** `./mix.sh narration.m4a` levels the voice to -16 LUFS, plays the music 8 dB quieter and pushes it down further whenever the voice is speaking (ffmpeg `sidechaincompress`), and copies the picture untouched. A few seconds.
+
+The music is "Deliberate Thought" by Kevin MacLeod (incompetech.com), Creative Commons Attribution 4.0. It must be credited wherever the video is posted.
+
+The rest of this page is the older kit: stills and a plain silent screen recording. It is the backup if the produced video cannot be used.
+
 ## Files
 | File | What it is |
 |---|---|
