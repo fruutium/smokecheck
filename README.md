@@ -11,11 +11,12 @@ Veritas AI International High School Hackathon 2026 · Track: AI + Climate · st
 - **Notebook (the main deliverable):** open [`smokecheck.ipynb`](smokecheck.ipynb) in Google Colab and choose
   Runtime → Run all. It needs no API keys or uploads, finishes in under a minute, and reads the small files in
   `data/`. Its first cell installs scikit-learn 1.9.1, the version our numbers come from.
-- **App:** `pip install -r app/requirements.txt`, then `python app/app.py` from the repo folder. The "Tomorrow"
-  tab shows a real forecast for tomorrow: the app runs `forecast_tomorrow.py` by itself in the background whenever
-  its saved forecast is out of date (about a minute the first time, then ~15 s). That script refits the tested
-  model, pulls the latest public data (no API keys) and writes `data/tomorrow.csv`. "2025 test run" replays every
-  call from the test year.
+- **App:** `pip install -r app/requirements.txt`, then `python app/app.py` from the repo folder and open
+  http://localhost:7860. Pick your city at the top. "Tomorrow" shows a real forecast for tomorrow: the app runs
+  `forecast_tomorrow.py` by itself in the background whenever its saved forecast is out of date (about a minute the
+  first time, then ~15 s). That script refits the tested model, pulls the latest public data (no API keys) and
+  writes `data/tomorrow.csv`. "2025 test run" replays every call from the test year, and "Does it work?" scores it. The page is `app/index.html`;
+  `app/app.py` serves it and answers its questions with JSON (`/api/live`, `/api/test-run`, `/api/results`).
 
 ## Results on the held-out test year (2025, six cities, 35 days above 35 µg/m³)
 
@@ -75,5 +76,7 @@ python fetch_evening.py       # each city's 2-7 PM hourly reading -> data/evenin
   **Open-Meteo Air Quality API**: https://open-meteo.com/en/docs/air-quality-api. Model estimates (about 45 km
   grid), not measurements.
 - **Open-Meteo** Historical Forecast API and Previous Runs API (weather): https://open-meteo.com
-- Libraries: pandas, NumPy, scikit-learn, matplotlib, pyshp, eccodes, jupytext, Gradio, Plotly.
+- Libraries: pandas, NumPy, scikit-learn, matplotlib, pyshp, eccodes, jupytext, FastAPI, Uvicorn.
+- App page: GSAP (animation, https://gsap.com); Google Fonts Big Shoulders Display and Schibsted Grotesk; three
+  effects adapted from React Bits (BlurText, SpotlightCard, Aurora), https://reactbits.dev
 - AI tools: Claude (Anthropic), through Claude Code; see the write-up for what it did.
