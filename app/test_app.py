@@ -157,7 +157,7 @@ with tempfile.TemporaryDirectory() as folder:
 first = app.CITIES[0]  # 40.0 belongs to the second city in sorted order
 html = app.live_card(rows, first, live_metrics, "2026-11-14")
 assert app.OK in html and "practice on Sunday, November 15, 2026" in html and "Smoke forecast 6.2 · indoors above 32" in html
-assert "Forecast made Saturday at 7:12 PM" in html and "weren't in yet" not in html
+assert "Forecast made Saturday at 7:12 PM" in html
 assert app.INDOORS in app.live_card(rows, app.CITIES[1], live_metrics, "2026-11-14")
 # Still good on the practice day itself; out of date the day after, with no call.
 assert app.OK in app.live_card(rows, first, live_metrics, "2026-11-15")
@@ -170,7 +170,7 @@ with tempfile.TemporaryDirectory() as folder:
     assert app.NOT_READY in html and "Waiting on: no AirNow readings yet" in html
     write_tomorrow(folder, "2026-11-15", [6.2] * 6, status="NOAA run not out yet; used today's reading")
     html = app.live_card(app.load_tomorrow(Path(folder)), first, live_metrics, "2026-11-14")
-    assert app.OK in html and "weren't in yet" in html
+    assert app.OK in html and "NOAA run" not in html  # fallbacks stay out of the coach's view
 assert app.live_view(rows, first, live_metrics, "2026-11-14")["state"] == "ok"
 assert app.live_view(rows, first, live_metrics, "2026-11-16")["state"] == "out_of_date"
 assert app.live_view(None, first, live_metrics, "2026-11-14")["state"] == "none"

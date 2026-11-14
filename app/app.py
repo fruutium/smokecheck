@@ -233,18 +233,14 @@ def live_view(rows, city, metrics, today):
 def live_card(rows, city, metrics, today, updating=False, failed=False):
     """updating: a new forecast is being made right now. failed: the last attempt to make one didn't work."""
     v = live_view(rows, city, metrics, today)
-    update_note = ("Getting the latest readings… this takes about a minute." if updating
-                   else "Couldn't reach the data sources just now; it tries again in a few minutes." if failed else "")
+    update_note = "Updating…" if updating else "Couldn't update." if failed else ""
     if v["state"] == "none":
         return (f'<div class="verdict" style="background:{COLOR[NOT_READY]}"><div class="call">{NOT_READY}</div>'
-                f'<div class="why">{update_note or "The forecast is made when the app opens."}</div></div>')
+                f'<div class="why">{update_note}</div></div>')
     why = {"out_of_date": f"The last forecast was for {pretty(v['date'])}.",
            "waiting": f"Waiting on: {v['status']}",
            "ok": f"Smoke forecast {v['forecast']:.1f} · indoors above {v['warn_at']:g}"}[v["state"]]
     note = f"Forecast made {v['made_at']:%A} at {v['made_at']:%-I:%M %p}."
-    if v["state"] == "ok" and v["status"] != "ok":
-        # The exact fallback is in v["status"]; a coach only needs to know the forecast firms up later.
-        note += " Some of today's readings weren't in yet; it updates itself as they come in."
     note = f"{note} {update_note}".strip()
     return f"""
     <div class="verdict" style="background:{COLOR[v['call']]}">
