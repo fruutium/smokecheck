@@ -1,5 +1,12 @@
 {
  "threshold": 35,
+ "cost_of_a_miss": 5,
+ "warn_at": {
+  "pred_persistence": 37.0,
+  "pred_climatology": 19.5,
+  "pred_cams": 29.5,
+  "pred_model": 24.0
+ },
  "test_period": [
   "2025-01-01",
   "2025-12-31"
@@ -9,15 +16,17 @@
    "mae": 3.4,
    "days": 2190,
    "bad_days": 35,
-   "caught": 14,
-   "missed": 21,
-   "false_alarms": 21,
-   "recall": 0.4
+   "warn_at": 37.0,
+   "caught": 12,
+   "missed": 23,
+   "false_alarms": 19,
+   "recall": 0.343
   },
   "pred_climatology": {
    "mae": 4.33,
    "days": 2190,
    "bad_days": 35,
+   "warn_at": 19.5,
    "caught": 0,
    "missed": 35,
    "false_alarms": 0,
@@ -27,10 +36,21 @@
    "mae": 3.72,
    "days": 2190,
    "bad_days": 35,
-   "caught": 10,
-   "missed": 25,
-   "false_alarms": 4,
-   "recall": 0.286
+   "warn_at": 29.5,
+   "caught": 18,
+   "missed": 17,
+   "false_alarms": 21,
+   "recall": 0.514
+  },
+  "pred_model": {
+   "mae": 2.59,
+   "days": 2190,
+   "bad_days": 35,
+   "warn_at": 24.0,
+   "caught": 18,
+   "missed": 17,
+   "false_alarms": 22,
+   "recall": 0.514
   }
  },
  "by_city": {
@@ -39,6 +59,7 @@
     "mae": 3.28,
     "days": 365,
     "bad_days": 3,
+    "warn_at": 37.0,
     "caught": 1,
     "missed": 2,
     "false_alarms": 2,
@@ -48,6 +69,7 @@
     "mae": 4.22,
     "days": 365,
     "bad_days": 3,
+    "warn_at": 19.5,
     "caught": 0,
     "missed": 3,
     "false_alarms": 0,
@@ -57,9 +79,20 @@
     "mae": 3.95,
     "days": 365,
     "bad_days": 3,
+    "warn_at": 29.5,
+    "caught": 2,
+    "missed": 1,
+    "false_alarms": 7,
+    "recall": 0.667
+   },
+   "pred_model": {
+    "mae": 2.41,
+    "days": 365,
+    "bad_days": 3,
+    "warn_at": 24.0,
     "caught": 1,
     "missed": 2,
-    "false_alarms": 1,
+    "false_alarms": 6,
     "recall": 0.333
    }
   },
@@ -68,15 +101,17 @@
     "mae": 3.6,
     "days": 365,
     "bad_days": 6,
+    "warn_at": 37.0,
     "caught": 1,
     "missed": 5,
-    "false_alarms": 5,
+    "false_alarms": 4,
     "recall": 0.167
    },
    "pred_climatology": {
     "mae": 4.66,
     "days": 365,
     "bad_days": 6,
+    "warn_at": 19.5,
     "caught": 0,
     "missed": 6,
     "false_alarms": 0,
@@ -86,9 +121,20 @@
     "mae": 3.27,
     "days": 365,
     "bad_days": 6,
+    "warn_at": 29.5,
+    "caught": 5,
+    "missed": 1,
+    "false_alarms": 1,
+    "recall": 0.833
+   },
+   "pred_model": {
+    "mae": 2.47,
+    "days": 365,
+    "bad_days": 6,
+    "warn_at": 24.0,
     "caught": 3,
     "missed": 3,
-    "false_alarms": 0,
+    "false_alarms": 4,
     "recall": 0.5
    }
   },
@@ -97,15 +143,17 @@
     "mae": 3.3,
     "days": 365,
     "bad_days": 6,
+    "warn_at": 37.0,
     "caught": 2,
     "missed": 4,
-    "false_alarms": 4,
+    "false_alarms": 3,
     "recall": 0.333
    },
    "pred_climatology": {
     "mae": 4.26,
     "days": 365,
     "bad_days": 6,
+    "warn_at": 19.5,
     "caught": 0,
     "missed": 6,
     "false_alarms": 0,
@@ -115,10 +163,21 @@
     "mae": 3.35,
     "days": 365,
     "bad_days": 6,
-    "caught": 0,
-    "missed": 6,
-    "false_alarms": 0,
-    "recall": 0.0
+    "warn_at": 29.5,
+    "caught": 2,
+    "missed": 4,
+    "false_alarms": 3,
+    "recall": 0.333
+   },
+   "pred_model": {
+    "mae": 2.65,
+    "days": 365,
+    "bad_days": 6,
+    "warn_at": 24.0,
+    "caught": 4,
+    "missed": 2,
+    "false_alarms": 3,
+    "recall": 0.667
    }
   },
   "Milwaukee": {
@@ -126,15 +185,17 @@
     "mae": 3.47,
     "days": 365,
     "bad_days": 9,
-    "caught": 6,
-    "missed": 3,
+    "warn_at": 37.0,
+    "caught": 4,
+    "missed": 5,
     "false_alarms": 3,
-    "recall": 0.667
+    "recall": 0.444
    },
    "pred_climatology": {
     "mae": 4.68,
     "days": 365,
     "bad_days": 9,
+    "warn_at": 19.5,
     "caught": 0,
     "missed": 9,
     "false_alarms": 0,
@@ -144,10 +205,21 @@
     "mae": 3.27,
     "days": 365,
     "bad_days": 9,
-    "caught": 3,
-    "missed": 6,
-    "false_alarms": 0,
-    "recall": 0.333
+    "warn_at": 29.5,
+    "caught": 4,
+    "missed": 5,
+    "false_alarms": 2,
+    "recall": 0.444
+   },
+   "pred_model": {
+    "mae": 2.67,
+    "days": 365,
+    "bad_days": 9,
+    "warn_at": 24.0,
+    "caught": 5,
+    "missed": 4,
+    "false_alarms": 3,
+    "recall": 0.556
    }
   },
   "Minneapolis": {
@@ -155,6 +227,7 @@
     "mae": 3.95,
     "days": 365,
     "bad_days": 9,
+    "warn_at": 37.0,
     "caught": 4,
     "missed": 5,
     "false_alarms": 5,
@@ -164,6 +237,7 @@
     "mae": 4.88,
     "days": 365,
     "bad_days": 9,
+    "warn_at": 19.5,
     "caught": 0,
     "missed": 9,
     "false_alarms": 0,
@@ -173,10 +247,21 @@
     "mae": 4.58,
     "days": 365,
     "bad_days": 9,
-    "caught": 3,
-    "missed": 6,
-    "false_alarms": 2,
-    "recall": 0.333
+    "warn_at": 29.5,
+    "caught": 5,
+    "missed": 4,
+    "false_alarms": 4,
+    "recall": 0.556
+   },
+   "pred_model": {
+    "mae": 3.03,
+    "days": 365,
+    "bad_days": 9,
+    "warn_at": 24.0,
+    "caught": 4,
+    "missed": 5,
+    "false_alarms": 4,
+    "recall": 0.444
    }
   },
   "St. Louis": {
@@ -184,6 +269,7 @@
     "mae": 2.81,
     "days": 365,
     "bad_days": 2,
+    "warn_at": 37.0,
     "caught": 0,
     "missed": 2,
     "false_alarms": 2,
@@ -193,6 +279,7 @@
     "mae": 3.27,
     "days": 365,
     "bad_days": 2,
+    "warn_at": 19.5,
     "caught": 0,
     "missed": 2,
     "false_alarms": 0,
@@ -202,11 +289,150 @@
     "mae": 3.86,
     "days": 365,
     "bad_days": 2,
+    "warn_at": 29.5,
     "caught": 0,
     "missed": 2,
-    "false_alarms": 1,
+    "false_alarms": 4,
     "recall": 0.0
+   },
+   "pred_model": {
+    "mae": 2.31,
+    "days": 365,
+    "bad_days": 2,
+    "warn_at": 24.0,
+    "caught": 1,
+    "missed": 1,
+    "false_alarms": 2,
+    "recall": 0.5
    }
+  }
+ },
+ "by_smoke": {
+  "clean_day": {
+   "pred_persistence": {
+    "mae": 3.02,
+    "days": 2068,
+    "bad_days": 12,
+    "warn_at": 37.0,
+    "caught": 2,
+    "missed": 10,
+    "false_alarms": 12,
+    "recall": 0.167
+   },
+   "pred_climatology": {
+    "mae": 3.82,
+    "days": 2068,
+    "bad_days": 12,
+    "warn_at": 19.5,
+    "caught": 0,
+    "missed": 12,
+    "false_alarms": 0,
+    "recall": 0.0
+   },
+   "pred_cams": {
+    "mae": 3.31,
+    "days": 2068,
+    "bad_days": 12,
+    "warn_at": 29.5,
+    "caught": 6,
+    "missed": 6,
+    "false_alarms": 11,
+    "recall": 0.5
+   },
+   "pred_model": {
+    "mae": 2.24,
+    "days": 2068,
+    "bad_days": 12,
+    "warn_at": 24.0,
+    "caught": 4,
+    "missed": 8,
+    "false_alarms": 14,
+    "recall": 0.333
+   }
+  },
+  "smoke_day": {
+   "pred_persistence": {
+    "mae": 9.86,
+    "days": 122,
+    "bad_days": 23,
+    "warn_at": 37.0,
+    "caught": 10,
+    "missed": 13,
+    "false_alarms": 7,
+    "recall": 0.435
+   },
+   "pred_climatology": {
+    "mae": 12.99,
+    "days": 122,
+    "bad_days": 23,
+    "warn_at": 19.5,
+    "caught": 0,
+    "missed": 23,
+    "false_alarms": 0,
+    "recall": 0.0
+   },
+   "pred_cams": {
+    "mae": 10.53,
+    "days": 122,
+    "bad_days": 23,
+    "warn_at": 29.5,
+    "caught": 12,
+    "missed": 11,
+    "false_alarms": 10,
+    "recall": 0.522
+   },
+   "pred_model": {
+    "mae": 8.63,
+    "days": 122,
+    "bad_days": 23,
+    "warn_at": 24.0,
+    "caught": 14,
+    "missed": 9,
+    "false_alarms": 8,
+    "recall": 0.609
+   }
+  }
+ },
+ "training_years_out_of_fold": {
+  "pred_persistence": {
+   "mae": 3.23,
+   "days": 5268,
+   "bad_days": 38,
+   "warn_at": 37.0,
+   "caught": 17,
+   "missed": 21,
+   "false_alarms": 18,
+   "recall": 0.447
+  },
+  "pred_climatology": {
+   "mae": 3.89,
+   "days": 5268,
+   "bad_days": 38,
+   "warn_at": 19.5,
+   "caught": 0,
+   "missed": 38,
+   "false_alarms": 0,
+   "recall": 0.0
+  },
+  "pred_cams": {
+   "mae": 3.79,
+   "days": 5268,
+   "bad_days": 38,
+   "warn_at": 29.5,
+   "caught": 28,
+   "missed": 10,
+   "false_alarms": 45,
+   "recall": 0.737
+  },
+  "pred_model": {
+   "mae": 2.49,
+   "days": 5268,
+   "bad_days": 38,
+   "warn_at": 24.0,
+   "caught": 21,
+   "missed": 17,
+   "false_alarms": 26,
+   "recall": 0.553
   }
  }
 }

@@ -55,11 +55,11 @@ def epa_daily():
     return pd.concat(out)
 
 
-def open_meteo_hourly(base_url, lat, lon, variables):
+def open_meteo_hourly(base_url, lat, lon, variables, start=START, end="2026-01-01"):
     """Hourly values from an Open-Meteo API, indexed by UTC time."""
     query = urllib.parse.urlencode({
         "latitude": lat, "longitude": lon, "hourly": ",".join(variables),
-        "start_date": START, "end_date": "2026-01-01", "timezone": "GMT"})
+        "start_date": start, "end_date": end, "timezone": "GMT"})
     with urllib.request.urlopen(f"{base_url}?{query}", timeout=120) as r:
         hourly = json.load(r)["hourly"]
     return pd.DataFrame(hourly).assign(time=lambda d: pd.to_datetime(d["time"])).set_index("time")
