@@ -19,7 +19,7 @@ We started from suggested project 4.3.2 (next-day air quality forecast). Instead
 
 ## How it works
 - **Data:** daily EPA PM2.5 for Chicago, Milwaukee, Madison, Minneapolis, Detroit and St. Louis (7,476 city-days). Train Aug 2022 – Dec 2024; test all of 2025, never shuffled. **Open-Meteo air-quality values (CAMS) are model estimates, not measurements.**
-- **Model:** the average of a Ridge regression (predicts tomorrow's PM2.5) and gradient-boosted trees (predict the change from today). Every input is known by about 8 PM; the latest is this city's 2–7 PM standard-time reading.
+- **Model:** the average of a Ridge regression (predicts tomorrow's PM2.5) and gradient-boosted trees (predict the change from today). Every input is known by about 8 PM (the latest is the 2–7 PM reading).
 - **Warning lines:** a missed bad day (above 35) counts as 5 false alarms. Each forecast's line is the middle of the cheapest lines over 200 resampled copies of 2022–2024, a rule we fixed before computing it. SmokeCheck's is 32, but those years can't pin it down: other random seeds put it anywhere from about 27 to 32.
 
 ## Results (2025, 35 bad city-days)
@@ -33,11 +33,11 @@ We started from suggested project 4.3.2 (next-day air quality forecast). Instead
 | Persistence (tomorrow = today) | 3.40 | 37 | 12 | 19 | 134 |
 | Raw CAMS (optimistic*) | 3.72 | 30 | 17 | 17 | 107 |
 
-**Takeaway:** SmokeCheck's forecast is clearly more accurate than NOAA's official one: 26% lower error (2.36 vs 3.20), better in every city and in all 1,000 resamples of 2025's weeks (gap 0.83, 95% range 0.55–1.17). But its move-indoors warnings, at the line the training years gave it, were worse than reading NOAA at 35 (cost 127 vs 123; ahead in only 42% of resamples), and it caught none of the 21 days when smoke first arrived. With one big smoke event in training, the warning line can't be set reliably (27 would have cost 117). *Raw CAMS's archive isn't a true day-ahead forecast and partly "sees" the day's smoke.
+**Takeaway:** SmokeCheck's forecast is clearly more accurate than NOAA's official one: 26% lower error (2.36 vs 3.20), better in every city and in all 1,000 resamples of 2025's weeks (gap 0.83, 95% range 0.55–1.17). But its move-indoors warnings, at the line the training years gave it, were worse than reading NOAA at 35 (cost 127 vs 123; ahead in only 42% of resamples), and it caught none of the 21 days when smoke first arrived. With one big smoke event in training, the warning line can't be set reliably (27 would have cost 117). *Raw CAMS's archive partly "sees" the day's smoke.
 
-**Where it fails.** When smoke *arrives* overnight it caught 0 of 21 days: on July 31 it said 15.3 for Chicago (measured 65.6) and 28.1 for Milwaukee (measured 83.7), below its line. When smoke *lingers* it caught 11 of 14: the next day in Chicago it said 51.8 while NOAA said 8.7 (measured 45.5). Its 80% range held 78.9% of days but only 31% of bad days.
+**Where it fails.** When smoke *arrives* overnight it caught 0 of 21 days: on July 31 it said 15.3 for Chicago (measured 65.6) and 28.1 for Milwaukee (measured 83.7), below its line. When smoke *lingers* it caught 11 of 14: the next day in Chicago it said 51.8, NOAA 8.7 (measured 45.5). Its 80% range held 78.9% of days but only 31% of bad days.
 
-**Tried and dropped:** trees predicting the PM2.5 level (1 of 38 bad training days caught); smoke mapped 300–900 km upwind (no change in error); and adding 2018–2022 (higher warning cost on training years, so never scored on 2025). We kept our last three inputs because they passed a rule written beforehand (training error 2.49 → 2.22), though on 2025 they made the warnings worse.
+**Tried and dropped:** trees predicting the PM2.5 level (1 of 38 bad training days caught), smoke mapped 300–900 km upwind (no change in error), and adding 2018–2022 (higher training-year warning cost). We kept our last three inputs by a rule written beforehand that checked both error and warning cost on the training years (error 2.49 → 2.22, cost 117 → 112). On 2025 the error improved and the warnings got worse.
 
 **Honesty notes:** the notebook's section 10 lists all 8 times we looked at 2025 before the final numbers, such as choosing the cities and making NOAA the main comparison after scoring our model.
 
