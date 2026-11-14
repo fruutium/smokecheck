@@ -77,29 +77,36 @@ if (app.DATA / "predictions.csv").exists() and (app.DATA / "metrics.json").exist
     rows, metrics = app.load_rows(), app.METRICS
     assert app.cutoff(metrics, "pred_model") == metrics["warn_at"]["pred_model"]
 
-    # Milwaukee 2025-07-31: SmokeCheck 26.8 is above its cut-off of 24.5, so it warns; NOAA 13.4 does not.
-    html = app.card(rows, "Milwaukee", "2025-07-31", metrics)
-    assert app.INDOORS in html and "<b>26.8</b>" in html and "→ warn (cut-off 24.5)" in html and "<b>83.7</b>" in html
-    assert "<span>NOAA's official forecast said</span><b>13.4</b>" in html and "→ no warning (cut-off 52.5)" in html
+    # The opening view, Minneapolis 2025-07-31: SmokeCheck 41.3 is above its cut-off of 32, so it warns;
+    # NOAA 18.7 does not. Measured 69.1.
+    assert (app.START_CITY, app.START_DATE) == ("Minneapolis", "2025-07-31")
+    html = app.card(rows, "Minneapolis", "2025-07-31", metrics)
+    assert app.INDOORS in html and "<b>41.3</b>" in html and "→ warn (cut-off 32)" in html and "<b>69.1</b>" in html
+    assert "<span>NOAA's official forecast said</span><b>18.7</b>" in html and "→ no warning (cut-off 52.5)" in html
+    assert "Likely between 15.1 and 90.7 (80% range)" in html  # range_lo is 15.05, which formats as 15.1
     assert "a bad day" in html
     assert (f"not {metrics['threshold']:g}" in html and f"missed bad day as {metrics['cost_of_a_miss']:g} false alarms" in html)
     assert f"warns above {metrics['warn_at']['pred_model']:g} µg/m³, not" in html
-    assert "anywhere from about 24 to 29 is defensible" in html
-    assert "at the EPA's 35 line: no warning" in html  # NOAA 13.4 is under 35 too
+    assert "anywhere from about 27 to 32 is defensible" in html
+    assert "at the EPA's 35 line: no warning" in html  # NOAA 18.7 is under 35 too
 
-    # Chicago 2025-07-31: SmokeCheck 13.7 and NOAA 13.7 both say outside; measured 65.6.
+    # Milwaukee 2025-07-31: SmokeCheck 28.1 is under its cut-off of 32, so it says outside: a miss.
+    html = app.card(rows, "Milwaukee", "2025-07-31", metrics)
+    assert app.OK in html and "<b>28.1</b>" in html and "<b>83.7</b>" in html and "a bad day" in html
+
+    # Chicago 2025-07-31: SmokeCheck 15.3 and NOAA 13.7 both say outside; measured 65.6.
     # Raw CAMS 34.3 warns, but it sits in the baselines line, marked optimistic.
     html = app.card(rows, "Chicago", "2025-07-31", metrics)
     assert app.OK in html and "<b>65.6</b>" in html
-    assert "<span>SmokeCheck said</span><b>13.7</b>" in html
-    assert "Likely between 8.8 and 20.6 (80% range)" in html  # shown only, the call stays green
+    assert "<span>SmokeCheck said</span><b>15.3</b>" in html
+    assert "Likely between 10.1 and 21.0 (80% range)" in html  # shown only, the call stays green
     assert "<span>NOAA's official forecast said</span><b>13.7</b>" in html
     assert "Raw CAMS estimate (optimistic) said 34.3 → warn (cut-off 30)" in html
     assert "Persistence (yesterday's measurement) said 12.4 → no warning (cut-off 37)" in html
 
-    # Chicago 2025-08-01: SmokeCheck 54.0 warns, NOAA 8.7 does not.
+    # Chicago 2025-08-01: SmokeCheck 51.8 warns, NOAA 8.7 does not.
     html = app.card(rows, "Chicago", "2025-08-01", metrics)
-    assert app.INDOORS in html and "<b>54.0</b>" in html
+    assert app.INDOORS in html and "<b>51.8</b>" in html
     assert "<span>NOAA's official forecast said</span><b>8.7</b>" in html and "→ no warning (cut-off 52.5)" in html
 
     # Without range_lo / range_hi the card shows no range at all (a COPY with the columns dropped).
@@ -132,6 +139,15 @@ if (app.DATA / "predictions.csv").exists() and (app.DATA / "metrics.json").exist
     assert own["caught"] == metrics["overall"]["pred_noaa"]["caught"]
     assert own["false_alarms"] == metrics["overall"]["pred_noaa"]["false_alarms"]
     assert own["mae"] == metrics["overall"]["pred_noaa"]["mae"]
+    # SmokeCheck's row in "Does it work?": MAE 2.36, line 32, 11 caught, 7 false alarms, cost 5 × 24 + 7 = 127.
+    model_row = app.scoreboard(metrics["overall"], metrics["cost_of_a_miss"]).iloc[0]
+    assert (model_row["Average miss (MAE, µg/m³)"], model_row["Warns above"]) == (2.36, 32)
+    assert (model_row["Bad days caught"], model_row["False alarms"]) == ("11 of 35", 7)
+    assert model_row["Cost (5 × missed + false alarms)"] == 127
+
+    # Smoke arrival days: SmokeCheck warned on 0 of the 21 in 2025.
+    assert "it warned on 0 of 21 in 2025" in app.arrival_note(rows, metrics)
+
     # A day with NOAA above 35 says "warn" at the plain line (Chicago 08-01 has NOAA 8.7: no warning).
     html = app.card(rows, "Chicago", "2025-08-01", metrics)
     assert "at the EPA's 35 line: no warning" in html
@@ -159,8 +175,8 @@ if (app.DATA / "predictions.csv").exists() and (app.DATA / "metrics.json").exist
         space_app = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(space_app)
         assert space_app.DATA == space / "data"
-        html = space_app.card(space_app.ROWS, "Milwaukee", "2025-07-31", space_app.METRICS)
-        assert space_app.INDOORS in html and "<b>26.8</b>" in html
+        html = space_app.card(space_app.ROWS, "Minneapolis", "2025-07-31", space_app.METRICS)
+        assert space_app.INDOORS in html and "<b>41.3</b>" in html
 
 # 6. Without metrics.json nothing breaks and the bad-day limit is 35.
 assert app.bad_day_limit({}) == 35
