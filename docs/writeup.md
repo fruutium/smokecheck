@@ -35,7 +35,8 @@ We started from suggested project 4.3.2 (next-day air quality forecast). Instead
 |---|---|---|---|---|
 | Persistence (tomorrow = today) | 3.40 | 37 | 12 | 19 |
 | Climatology (usual for that city and month) | 4.33 | 19.5 | 0 | 0 |
-| Raw CAMS estimate | 3.72 | 29.5 | 18 | 21 |
+| [NOAA day-ahead forecast (NAQFC), the official forecast] | [ ] | [ ] | [ ] | [ ] |
+| Raw CAMS estimate (optimistic, see below) | 3.72 | 29.5 | 18 | 21 |
 | **SmokeCheck** | **2.59** | 24 | 18 | 22 |
 
 **Takeaway:** SmokeCheck's number is the closest every day, on clean days (2.24 vs 3.02 for persistence) and smoke days (8.63 vs 9.86). On warnings it only ties CAMS. CAMS has an unfair edge: Open-Meteo keeps no true day-ahead CAMS archive, so the archived value for a day already partly "sees" that day's smoke.

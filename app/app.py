@@ -11,7 +11,8 @@ DATA = Path(__file__).parent.parent / "data"
 DEFAULT_LIMIT = 35  # µg/m³ daily mean; only used when metrics.json does not say otherwise
 START_CITY, START_DATE = "Milwaukee", "2025-07-31"  # the headline smoke day
 # Readable names for the forecast columns, SmokeCheck first. Any other pred_* column shows under its own name.
-NAMES = {"pred_model": "SmokeCheck", "pred_cams": "Raw CAMS estimate",
+NAMES = {"pred_model": "SmokeCheck", "pred_noaa": "NOAA day-ahead forecast (NAQFC)",
+         "pred_cams": "Raw CAMS estimate",
          "pred_persistence": "Persistence (yesterday's measurement)",
          "pred_climatology": "Climatology (usual for this city and month)"}
 
