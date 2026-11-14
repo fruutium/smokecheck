@@ -309,6 +309,52 @@ print("Test year 2025, all six cities")
 results
 
 # %% [markdown]
+# ### How sure is the forecast? A likely range
+#
+# One number hides how unsure we are, so each forecast also gets a range meant to hold the measurement 8 days out
+# of 10. We sort the training days into groups by how high their out-of-fold forecast was, split at the 20th, 40th,
+# 60th and 80th percentile, with forecasts above the warning cut-off as their own top group. In each group we take
+# the 10th and 90th percentile of (measured − forecast), and a new forecast's range is the forecast plus those two
+# numbers (never below 0).
+# The ranges come only from the training years, so 80% there holds by construction; 2025 is the real check.
+
+# %%
+RANGE_EDGES = [round(float(x), 1) for x in train["pred_model"].quantile([0.2, 0.4, 0.6, 0.8])] + [warn_at["pred_model"]]
+
+
+def range_bin(rows):
+    # -inf: the trees half can push a forecast slightly below 0
+    return pd.cut(rows["pred_model"], [-np.inf] + RANGE_EDGES + [np.inf], right=False)
+
+
+miss = train["obs_pm25"] - train["pred_model"]  # positive = the measurement came in higher than the forecast
+offsets = miss.groupby(range_bin(train), observed=True).quantile([0.1, 0.9]).unstack()
+
+
+def add_range(rows):
+    rows["range_lo"] = (rows["pred_model"] + range_bin(rows).map(offsets[0.1]).astype(float)).clip(lower=0)
+    rows["range_hi"] = rows["pred_model"] + range_bin(rows).map(offsets[0.9]).astype(float)
+    assert rows[["range_lo", "range_hi"]].notna().all().all()
+
+
+def coverage(rows):
+    inside = rows["obs_pm25"].between(rows["range_lo"], rows["range_hi"])
+    width = rows["range_hi"] - rows["range_lo"]
+    groups = {"all": inside == inside, "top_bin": rows["pred_model"] >= RANGE_EDGES[-1],
+              "bad_days": rows["obs_pm25"] > THRESHOLD, "smoke_days": rows["smoke"] >= 2}
+    return {g: {"days": int(m.sum()), "inside": round(float(inside[m].mean()), 3),
+                "median_width": round(float(width[m].median()), 1)} for g, m in groups.items()}
+
+
+add_range(train)
+add_range(test)
+print("Offsets added to the forecast in each group (µg/m³):")
+print(offsets.round(1).rename(columns={0.1: "low (10th pct)", 0.9: "high (90th pct)"}))
+print("\nShare of days whose measurement fell inside the range (target 0.8):")
+print(pd.concat({"training years (in-sample)": pd.DataFrame(coverage(train)).T,
+                 "test 2025": pd.DataFrame(coverage(test)).T}).astype({"days": int}))
+
+# %% [markdown]
 # ## 8. Where it works and where it fails
 #
 # **Arrival days vs continuing days.** A bad day is an *arrival* when the day before was fine (35 or below),
@@ -383,6 +429,10 @@ metrics = {
 }
 train["is_smoke_day"] = train["smoke"] >= 2
 cols = ["date", "city", "lat", "lon", "obs_pm25"] + FORECASTS + ["is_smoke_day", "split"]
+cols += ["range_lo", "range_hi"]  # not pred_*: the app shows every pred_* column as its own forecaster
+metrics["forecast_range"] = {"method": "10th-90th percentile of training out-of-fold misses, by forecast level",
+                             "level": 0.8, "bin_edges": RANGE_EDGES, "offsets_low_high": offsets.round(2).values.tolist(),
+                             "coverage_train_in_sample": coverage(train), "coverage_test": coverage(test)}
 os.makedirs("data", exist_ok=True)
 pd.concat([train[cols], test[cols]]).sort_values(["city", "date"]).round(2).to_csv("data/predictions.csv", index=False)
 with open("data/metrics.json", "w") as f:

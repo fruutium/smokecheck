@@ -535,5 +535,86 @@
    "false_alarms": 26,
    "recall": 0.553
   }
+ },
+ "forecast_range": {
+  "method": "10th-90th percentile of training out-of-fold misses, by forecast level",
+  "level": 0.8,
+  "bin_edges": [
+   5.6,
+   7.1,
+   8.5,
+   10.4,
+   24.0
+  ],
+  "offsets_low_high": [
+   [
+    -1.57,
+    2.45
+   ],
+   [
+    -2.56,
+    2.78
+   ],
+   [
+    -3.06,
+    3.19
+   ],
+   [
+    -3.64,
+    4.04
+   ],
+   [
+    -4.68,
+    6.91
+   ],
+   [
+    -27.41,
+    28.03
+   ]
+  ],
+  "coverage_train_in_sample": {
+   "all": {
+    "days": 5268,
+    "inside": 0.8,
+    "median_width": 6.2
+   },
+   "top_bin": {
+    "days": 47,
+    "inside": 0.787,
+    "median_width": 55.4
+   },
+   "bad_days": {
+    "days": 38,
+    "inside": 0.368,
+    "median_width": 52.5
+   },
+   "smoke_days": {
+    "days": 673,
+    "inside": 0.734,
+    "median_width": 7.7
+   }
+  },
+  "coverage_test": {
+   "all": {
+    "days": 2190,
+    "inside": 0.792,
+    "median_width": 5.3
+   },
+   "top_bin": {
+    "days": 40,
+    "inside": 0.775,
+    "median_width": 55.4
+   },
+   "bad_days": {
+    "days": 35,
+    "inside": 0.314,
+    "median_width": 52.7
+   },
+   "smoke_days": {
+    "days": 122,
+    "inside": 0.623,
+    "median_width": 11.6
+   }
+  }
  }
 }
