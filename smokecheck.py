@@ -222,6 +222,11 @@ print("bad days in each training block:", train.groupby("block")["bad"].sum().to
 # a change of at most 0.005 µg/m³, moved our model's lowest-cost cut-off from 24 to 29.5.) So for **every**
 # forecast, baselines included, we make 200 reshuffled copies of the training years by drawing whole calendar weeks
 # at random (a smoke event stays together), find the lowest-cost cut-off on each copy, and use the **median**.
+#
+# **This is still not a sharp answer, and we want to say so.** We fixed the random seed (0) before computing the
+# cut-off. With other seeds, our model's median lands at 24-24.5 about half the time and at 28.5-29.5 about 40% of
+# the time (we checked 100 seeds, training years only). The training years simply can't tell those lines apart:
+# with 38 bad days, mostly from one event, the warning line is somewhere between about 24 and 29.
 
 # %%
 COST_OF_A_MISS = 5
@@ -297,26 +302,25 @@ print(pd.DataFrame({col: score(train, col) for col in FORECASTS + ["pred_trees_l
 # average above 35. Before running the comparison we wrote down the rule: adopt the longer model only if, on the same 2022-2024 days, its average error is lower
 # **and** its warning cost (5 × missed + false alarms) isn't higher. `compare_seasons.py` hides one year at a time:
 #
-# (This comparison was run before we switched to the median-of-copies cut-off, so its cut-offs are the single
-# lowest-cost ones; the error column doesn't depend on that.)
+# (Rerun on the final data. Its cut-offs are the single lowest-cost ones, which the warning-rule cell above shows
+# are noisy; the error column doesn't depend on them.)
 #
 # | Training-year check, 2022-08-07 to 2024 (38 bad days) | average error | warn above | caught | missed | false alarms | cost | arrival days caught |
 # |---|---|---|---|---|---|---|---|
-# | current model | 2.49 | 24 | 21 | 17 | 26 | 111 | 4 of 21 |
-# | current model without CAMS | 2.48 | 29.5 | 18 | 20 | 12 | 112 | 1 of 21 |
-# | 2018-2024, without CAMS | 2.38 | 27.5 | 18 | 20 | 15 | 115 | 1 of 21 |
-# | 2018-2024, without CAMS, plus upwind smoke | 2.39 | 30 | 17 | 21 | 11 | 116 | 1 of 21 |
+# | current model | 2.49 | 29.5 | 18 | 20 | 12 | 112 | 1 of 21 |
+# | current model without CAMS | 2.49 | 29 | 18 | 20 | 13 | 113 | 1 of 21 |
+# | 2018-2024, without CAMS | 2.38 | 27 | 18 | 20 | 15 | 115 | 1 of 21 |
+# | 2018-2024, without CAMS, plus upwind smoke | 2.38 | 29.5 | 17 | 21 | 11 | 116 | 1 of 21 |
 #
 # More years lowered the average error in every hidden year (by 0.06 to 0.15), but the warning cost went up a
-# little, so by our rule we kept the current model and never scored the longer one on 2025. What we learned:
-# dropping CAMS alone took arrival-day catches from 4 to 1 of 21 (each at its own cut-off). With numbers this
-# small that's a hint that CAMS helps on arrival days, not proof. Upwind smoke still didn't help, but the extra
-# years add only 3 smoke bad days, so this was a weak test of our guess about it. A cost gap of 4 is less than one missed day, so the call is close. A version that
+# little, so by our rule we kept the current model and never scored the longer one on 2025. Upwind smoke still
+# didn't help, but the extra years add only 3 smoke bad days, so this was a weak test of our guess about it.
+# A cost gap of 3 is less than one missed day, so the call is close. A version that
 # keeps CAMS where it exists might get both; we didn't try it, because we had decided not to add variants after
 # seeing these results.
 
 # %% [markdown]
-# ## 7. The test: 2025, scored once
+# ## 7. The test: 2025
 #
 # We train on all the training years and predict every day of 2025.
 #
@@ -382,6 +386,46 @@ print(offsets.round(1).rename(columns={0.1: "low (10th pct)", 0.9: "high (90th p
 print("\nShare of days whose measurement fell inside the range (target 0.8):")
 print(pd.concat({"training years (in-sample)": pd.DataFrame(coverage(train)).T,
                  "test 2025": pd.DataFrame(coverage(test)).T}).astype({"days": int}))
+
+# %% [markdown]
+# **How sure are we?** 2025 has only 35 bad days, so we resample 2025's weeks 1,000 times (all six cities kept
+# together, because smoke hits several cities at once) and see how much each difference moves. This describes
+# the uncertainty in our 2025 numbers; nothing is chosen from it.
+
+# %%
+weeks = pd.to_datetime(test["date"]).dt.to_period("W").astype(str).to_numpy()
+rows_of_week = {w: np.flatnonzero(weeks == w) for w in np.unique(weeks)}
+week_ids = list(rows_of_week)
+err = {c: (test[c] - test["obs_pm25"]).abs().to_numpy() for c in ["pred_model", "pred_noaa", "pred_persistence"]}
+real = test["obs_pm25"].to_numpy() > THRESHOLD
+
+
+def cost_of(col, cut_off, rows):
+    warned = test[col].to_numpy()[rows] > cut_off
+    return COST_OF_A_MISS * (real[rows] & ~warned).sum() + (~real[rows] & warned).sum()
+
+
+rng = np.random.default_rng(1)
+gaps = []
+for _ in range(1000):
+    rows = np.concatenate([rows_of_week[w] for w in rng.choice(week_ids, len(week_ids))])
+    gaps.append({
+        "error gap vs NOAA": err["pred_noaa"][rows].mean() - err["pred_model"][rows].mean(),
+        "error gap vs persistence": err["pred_persistence"][rows].mean() - err["pred_model"][rows].mean(),
+        "cost gap vs NOAA at 35": cost_of("pred_noaa", 35, rows) - cost_of("pred_model", warn_at["pred_model"], rows),
+        "cost gap vs persistence": cost_of("pred_persistence", warn_at["pred_persistence"], rows) - cost_of("pred_model", warn_at["pred_model"], rows),
+    })
+gaps = pd.DataFrame(gaps)
+pd.set_option("display.width", 160)
+print("Positive = SmokeCheck is better. 95% range over 1,000 resamples of 2025's weeks:")
+print(pd.DataFrame({"middle": gaps.median(), "low (2.5%)": gaps.quantile(0.025), "high (97.5%)": gaps.quantile(0.975),
+                    "share where SmokeCheck wins": (gaps > 0).mean()}).round(2))
+
+# %% [markdown]
+# The average-error win is solid: SmokeCheck is closer than NOAA and persistence in every resample (by about
+# 0.3 to 1.0 µg/m³). The warning win is weaker. Against persistence it holds in most resamples (94%), but against
+# NOAA at the 35 line the cost gap swings from clearly better to clearly worse (SmokeCheck ahead in 60%). So on the
+# "move indoors" call we say SmokeCheck is roughly even with NOAA, and we claim the average-error win.
 
 # %% [markdown]
 # ## 8. Where it works and where it fails
@@ -455,6 +499,8 @@ print(week[["date", "obs_pm25", "pred_persistence", "pred_noaa", "pred_cams", "p
 #      switching to the median-of-copies rule in section 6, which we wrote down before computing it.
 #   4. While building the likely range, a few ways of grouping forecasts were tried on 2025 before the rule was fixed.
 #   5. We picked the six cities knowing how many smoky days each had, 2025 included.
+#   6. We made NOAA's forecast our main comparison after we had already scored our model on 2025.
+#   7. We pinned scikit-learn 1.9.1 after seeing that older versions gave 17 caught instead of 18.
 # - **One smoke event dominates training.** 36 of the 38 bad training days are from 2023, mostly one June event.
 #   Going back to 2018 doesn't fix this: those years add only 3 smoke bad days (section 6).
 # - **"Today" isn't fully known in the evening.** We use today's full-day average; at 6 pm the last hours are missing.
