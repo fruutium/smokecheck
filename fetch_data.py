@@ -29,8 +29,9 @@ CITIES = {
 RAW = pathlib.Path("data/raw")
 
 
-def epa_daily(years=range(int(START[:4]), int(END[:4]) + 1), raw=RAW):
-    """Observed daily mean PM2.5 per city: average over all EPA monitors in the metro area."""
+def epa_daily(years=range(int(START[:4]), int(END[:4]) + 1), raw=RAW, cities=CITIES):
+    """Observed daily mean PM2.5 per city: average over all EPA monitors in the metro area.
+    `cities` maps a name to a tuple that starts with the EPA metro-area name (fetch_ring.py passes its own)."""
     raw.mkdir(parents=True, exist_ok=True)
     frames = []
     for year in years:
@@ -45,7 +46,7 @@ def epa_daily(years=range(int(START[:4]), int(END[:4]) + 1), raw=RAW):
     df = df[df["Event Type"] != "Excluded"]
     df["pm25"] = df["Arithmetic Mean"].astype(float)
     out = []
-    for city, (cbsa, *_rest) in CITIES.items():
+    for city, (cbsa, *_rest) in cities.items():
         d = df[df["CBSA Name"].fillna("").str.startswith(cbsa)]
         # one value per monitor per day first, so a monitor with several instruments doesn't count twice
         site = d.groupby(["Date Local", "State Code", "County Code", "Site Num"])["pm25"].mean()
