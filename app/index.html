@@ -393,6 +393,14 @@ if (window.gsap) {
 }
 
 // ---------- Ask the server ----------
+// On GitHub Pages there is no Python server: build_site.py saves every answer as a file and adds
+// <meta name="smokecheck-static"> to this page, so the same questions read those files instead.
+const STATIC = !!document.querySelector('meta[name="smokecheck-static"]');
+function api(name, date) {
+  if (STATIC) return 'api/' + name + (date ? '/' + date : '') + '.json';
+  return '/api/' + name + (date ? '?date=' + date : '');
+}
+
 async function getJSON(url) {
   const reply = await fetch(url);
   if (!reply.ok) throw new Error(url + ' answered ' + reply.status);
@@ -403,7 +411,7 @@ async function getJSON(url) {
 // Asking also makes the server start a new forecast if the saved one is old. While that runs, ask again every 3 s.
 async function loadLive() {
   try {
-    got.live = await getJSON('/api/live');
+    got.live = await getJSON(api('live'));
   } catch (error) {   // server not reachable: keep the last forecast, if any, and say so
     got.live = { cities: {}, ...got.live, status: { refreshing: false, failed: true } };
   }
@@ -416,7 +424,7 @@ async function loadLive() {
 // 2025 test run: one request per day brings all six cities, so switching city needs no request.
 // With no date the server sends its opening day.
 async function showDay(date) {
-  const day = got.days[date] || await getJSON('/api/test-run' + (date ? '?date=' + date : ''));
+  const day = got.days[date] || await getJSON(api('test-run', date));
   got.days[day.date] = day;
   state.day = day.date;
   useCities(day);
@@ -424,7 +432,7 @@ async function showDay(date) {
 }
 
 async function loadResults() {
-  got.results = await getJSON('/api/results');
+  got.results = await getJSON(api('results'));
   if (state.view === 'results') draw();
 }
 

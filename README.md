@@ -11,6 +11,9 @@ Veritas AI International High School Hackathon 2026 · Track: AI + Climate · st
 - **Notebook (the main deliverable):** open [`smokecheck.ipynb`](smokecheck.ipynb) in Google Colab and choose
   Runtime → Run all. It needs no API keys or uploads, finishes in under a minute, and reads the small files in
   `data/`. Its first cell installs scikit-learn 1.9.1, the version our numbers come from.
+- **Live site:** https://fruutium.github.io/smokecheck/. GitHub Pages only serves files, so a scheduled GitHub
+  Action (`.github/workflows/pages.yml`) remakes the forecast every 30 minutes from 2:00 to 11:30 PM Central and
+  `build_site.py` saves every answer the page needs as a JSON file.
 - **App:** `pip install -r app/requirements.txt`, then `python app/app.py` from the repo folder and open
   http://localhost:7860. Pick your city at the top. "Tomorrow" shows a real forecast for tomorrow: the app runs
   `forecast_tomorrow.py` by itself in the background whenever its saved forecast is out of date (about a minute the

@@ -6,3 +6,4 @@ __pycache__/
 data/raw_new/
 data/tomorrow.csv
 data/tomorrow.csv.tmp
+site/
