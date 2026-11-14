@@ -1,0 +1,45 @@
+# SmokeCheck demo flow
+
+Plan for the Gradio app. The app is the optional extra on top of the hub's Colab notebook, so it stays small.
+It reads two files and nothing else: `data/predictions.csv` and `data/metrics.json`. It never imports model code.
+
+## The 60 seconds a judge sees (three stops, one city change, one slider step)
+1. Opens on **Milwaukee, July 31, 2025**, no clicks needed. SmokeCheck forecast 27.6, above its warning line of 24 → **Move practice indoors**. Measured 83.7. (Our success.)
+2. The card says why the line is 24, not 35: forecasts run low on smoke days, and the line was set on 2022–2024 so one missed bad day costs as much as 5 false alarms.
+3. Under the card, each forecast with its own call: Raw CAMS estimate 38.5 → warn (line 29.5) · persistence 32.3 → outside (line 37) · monitors measured 83.7 (a bad day).
+4. Switch city to **Chicago**, same day: SmokeCheck 13.9 → outside, CAMS 34.3 → warn, measured 65.7. (Our miss: smoke arrived overnight.)
+5. Step the slider to **August 1**: SmokeCheck 54.8 → warn, CAMS 19.1 → outside, measured 45.5. (CAMS's miss: smoke lingering.)
+6. Tab **"Does it work?"**: one row per forecast (MAE, warns above, bad days caught of 35, false alarms), then smoke vs clean days, then by city.
+7. Tab **"Where it fails"**: the worst misses in 2025, with a note that smoke-arrival days are the weak spot.
+
+Footer on every tab: "Open-Meteo air-quality values are model estimates, not measurements. Prototype, not health advice."
+
+## Where each piece gets its data
+| Piece | Source |
+|---|---|
+| City dropdown, map dots | `city`, `lat`, `lon` |
+| Date slider | `date`, test rows only (`split == "test"`) |
+| Verdict, map colors | `pred_model` compared with `warn_at["pred_model"]` (24); each baseline uses its own `warn_at` |
+| "Was it a bad day?" | `obs_pm25` compared with `threshold` (35) |
+| Three numbers | `pred_cams`, `pred_model`, `obs_pm25` (+ `pred_persistence`) |
+| "Does it work?" table | `metrics.json` |
+| "Where it fails" list | rows sorted by `abs(pred_model - obs_pm25)`, test only |
+| Uncertainty band (only if present) | `pred_lo`, `pred_hi` |
+| Smoke-day markers on the slider (only if present) | `is_smoke_day` |
+
+## Rules the app follows
+- The verdict uses **only the forecast**, because that is all the athletic director would have had the day before. The measured value is shown as "what happened", never used for the call.
+- Only 2025 test rows are shown. Training days would make the model look better than it is.
+- A day with no monitor reading shows "no measurement", not 0. A day with no forecast shows "no forecast", not a verdict.
+- The app works without `pred_lo`, `pred_hi` and `is_smoke_day`.
+- No mock data. Until the hub sends real rows, the app shows nothing rather than invented numbers.
+
+## Not building (unless there is time after the first submission)
+- Hourly slider and practice-hour (3–6 PM) forecast: the first model is a daily average.
+- Live "today" mode: November is outside smoke season, so the map would be all green.
+- Individual schools on the map: the forecast is per city.
+- A "reveal what happened" button: the measured value is simply always shown.
+
+## Decided
+- **Two verdict levels** (Aiden, Nov 13): "OK to practice outside" / "Move practice indoors". Originally split at 35; since Nov 14 each forecast uses its own warning line from `warn_at` (SmokeCheck 24), and 35 only defines a bad day.
+- **Two colors to match:** green at or below the warning line, red above it, on the verdict card and the map dots.
