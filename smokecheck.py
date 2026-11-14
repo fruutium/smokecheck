@@ -35,6 +35,8 @@
 #   (`smoke`: 0 none, 1 light, 2 medium, 3 heavy).
 # - `data/weather_dayahead_2025.csv`: for 2025 only, the weather that was **forecast one day ahead**.
 #   Section 7 explains why we need it.
+# - `data/naqfc_dayahead.csv`: NOAA's official air-quality forecast (NAQFC), the run issued the morning
+#   before each target day. It's a baseline in section 5.
 
 # %%
 import json
@@ -55,6 +57,7 @@ def load(name):
 
 
 daily = load("daily.csv").merge(load("smoke_days.csv")[["city", "date", "smoke"]], on=["city", "date"])
+daily = daily.merge(load("naqfc_dayahead.csv")[["city", "date", "naqfc_pm25"]], on=["city", "date"], how="left")
 dayahead_wx = load("weather_dayahead_2025.csv")
 
 THRESHOLD = 35  # µg/m³, the US EPA 24-hour PM2.5 standard. A "bad day" is a daily average above it.
@@ -131,22 +134,25 @@ train = df[df["split"] == "train"].copy()
 print(f"training rows: {len(train):,}   features: {len(FEATURES)}")
 
 # %% [markdown]
-# ## 5. Baselines: three simple forecasts any model has to beat
+# ## 5. Baselines: four forecasts our model has to beat
 #
 # 1. **Persistence:** tomorrow will be the same as today.
 # 2. **Climatology:** tomorrow will be the average for this city and month (from the training years only).
-# 3. **Raw CAMS:** the CAMS model's number for the target day, as it is.
-#
-# A warning about baseline 3. Open-Meteo does not keep what CAMS predicted *a day ahead*: we checked, and its
-# "previous day" values are empty for 2022 to 2025. The CAMS history it serves is stitched from short-range
-# runs, which already "see" the smoke. So this baseline is **stronger than what CAMS could have told you the
-# evening before**, and we don't let our model use it.
+# 3. **NOAA's official forecast (NAQFC):** what the US National Air Quality Forecast Capability predicted for the
+#    target day's average PM2.5, in its 12Z run the day before (6 am Central). This is the professional forecast
+#    an athletic director could really have looked up. We take the grid cell nearest the city centre. Its
+#    24-hour window runs 10 pm to 10 pm Central, 22 of the 24 hours of EPA's day. NOAA upgraded the model in May 2024.
+# 4. **Raw CAMS:** the CAMS model's number for the target day. Open-Meteo does not keep what CAMS predicted
+#    *a day ahead*: we checked, and its "previous day" values are empty for 2022 to 2025. The CAMS history it
+#    serves is stitched from short-range runs that already "see" the smoke. So this baseline is **stronger than
+#    any real day-ahead forecast**, and we don't let our model use it. We keep it as an optimistic upper bar.
 
 # %%
 df["month"] = df["date"].str[5:7].astype(int)
 df = df.join(train.assign(month=train["date"].str[5:7].astype(int))
              .groupby(["city", "month"])["obs_pm25"].mean().rename("pred_climatology"), on=["city", "month"])
 df["pred_persistence"] = df["obs_1"]
+df["pred_noaa"] = df["naqfc_pm25"]
 df["pred_cams"] = df["cams_pm25"]
 train = df[df["split"] == "train"].copy()
 
@@ -218,18 +224,20 @@ def warning_counts(rows, col, warn_at):
 
 
 def best_cut_off(rows, col):
+    rows = rows[rows[col].notna()]  # NOAA has no forecast for 3 run days in 2022-23
     def cost(t):
         c = warning_counts(rows, col, t)
         return COST_OF_A_MISS * c["missed"] + c["false_alarms"]
     return min(np.arange(10, 45.5, 0.5), key=cost)
 
 
-FORECASTS = ["pred_persistence", "pred_climatology", "pred_cams", "pred_model"]
+FORECASTS = ["pred_persistence", "pred_climatology", "pred_noaa", "pred_cams", "pred_model"]
 warn_at = {col: float(best_cut_off(train, col)) for col in FORECASTS + ["pred_trees_level"]}
 
 
 def score(rows, col):
     """Average error, plus warnings using that forecast's own cut-off."""
+    rows = rows[rows[col].notna()]
     out = {"mae": round(float((rows[col] - rows["obs_pm25"]).abs().mean()), 2), "days": int(len(rows)),
            "bad_days": int((rows["obs_pm25"] > THRESHOLD).sum()), "warn_at": warn_at[col]}
     out.update(warning_counts(rows, col, warn_at[col]))
@@ -287,13 +295,13 @@ results
 test["is_smoke_day"] = test["smoke"] >= 2  # NOAA drew a medium or heavy plume over the city on the target day
 bad = test[test["obs_pm25"] > THRESHOLD].copy()
 bad["kind"] = np.where(bad["obs_1"] > THRESHOLD, "continuing", "arrival")
-for col in ["pred_persistence", "pred_cams", "pred_model"]:
+for col in ["pred_persistence", "pred_noaa", "pred_cams", "pred_model"]:
     bad[col.removeprefix("pred_") + "_warned"] = bad[col] > warn_at[col]
-print(bad.groupby("kind")[["persistence_warned", "cams_warned", "model_warned"]].agg(["sum", "size"]))
+print(bad.groupby("kind")[["persistence_warned", "noaa_warned", "cams_warned", "model_warned"]].agg(["sum", "size"]))
 
 # %%
 print("Every bad day in 2025:")
-print(bad[["date", "city", "kind", "obs_pm25", "obs_1", "pred_persistence", "pred_cams", "pred_model", "smoke"]]
+print(bad[["date", "city", "kind", "obs_pm25", "obs_1", "pred_persistence", "pred_noaa", "pred_cams", "pred_model", "smoke"]]
       .round(1).sort_values("date").to_string(index=False))
 
 # %%
@@ -319,8 +327,8 @@ print(by_smoke.rename(index={False: "clean (no medium/heavy plume)", True: "smok
 
 # %%
 week = test[(test["city"] == "Chicago") & test["date"].between("2025-07-29", "2025-08-03")]
-print({c: warn_at[c] for c in ["pred_persistence", "pred_cams", "pred_model"]}, "<- warn above these")
-print(week[["date", "obs_pm25", "pred_persistence", "pred_cams", "pred_model", "region_max_today", "smoke_today"]]
+print({c: warn_at[c] for c in ["pred_persistence", "pred_noaa", "pred_cams", "pred_model"]}, "<- warn above these")
+print(week[["date", "obs_pm25", "pred_persistence", "pred_noaa", "pred_cams", "pred_model", "region_max_today", "smoke_today"]]
       .round(1).to_string(index=False))
 
 # %% [markdown]
@@ -363,6 +371,8 @@ print("saved data/predictions.csv and data/metrics.json")
 # - **CAMS global atmospheric composition forecasts** (Copernicus Atmosphere Monitoring Service) via the
 #   **Open-Meteo Air Quality API**, https://open-meteo.com/en/docs/air-quality-api
 # - **Open-Meteo** Historical Forecast API and Previous Runs API (weather), https://open-meteo.com
+# - **NOAA National Air Quality Forecast Capability (NAQFC)** PM2.5 forecasts, NOAA Open Data on AWS,
+#   https://registry.opendata.aws/noaa-nws-naqfc-pds/ (bias-corrected 24-hour average, CONUS 5 km grid)
 # - **NOAA Hazard Mapping System** smoke polygons, https://www.ospo.noaa.gov/products/land/hms.html
-# - Libraries: pandas, NumPy, scikit-learn, matplotlib, pyshp, jupytext
+# - Libraries: pandas, NumPy, scikit-learn, matplotlib, pyshp, eccodes (reads NOAA's GRIB files), jupytext
 # - AI tools: Claude (Anthropic), used through Claude Code to help write and debug the code. [Team: add what you used it for.]
