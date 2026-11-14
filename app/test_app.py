@@ -200,6 +200,8 @@ assert refresh.needs_refresh(done, at("2026-11-15 06:30"))  # past midnight: tom
 assert not refresh.needs_refresh(partial, at("2026-11-15 01:30"))  # partial, but only 18 minutes old
 assert refresh.needs_refresh(partial, at("2026-11-15 01:50"))  # partial and over 30 minutes old: redo it
 
+assert refresh.status() == {"refreshing": False, "failed": False}  # nothing started in these tests
+
 # 8. Without metrics.json nothing breaks and the bad-day limit is 35.
 assert app.bad_day_limit({}) == 35
 

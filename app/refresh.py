@@ -58,3 +58,10 @@ def refresh_if_stale(rows, now_utc=None):
         _run = subprocess.Popen([sys.executable, "-u", str(SCRIPT)], cwd=REPO, stdout=LOG.open("w"),
                                 stderr=subprocess.STDOUT)
     return is_running()
+
+
+def status():
+    """For a page that polls: {"refreshing": a new forecast is being made, "failed": the last try didn't work}.
+    After a failure the page keeps the last forecast (if any) and says it couldn't update; a retry starts on the
+    next refresh_if_stale() call once RETRY_AFTER_FAILURE has passed."""
+    return {"refreshing": is_running(), "failed": last_run_failed()}
