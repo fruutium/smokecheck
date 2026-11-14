@@ -245,6 +245,14 @@ print(pd.DataFrame({col: score(train, col) for col in FORECASTS + ["pred_trees_l
 # Its average error was good, but it caught almost none of the bad days. When 2023 is hidden, the other
 # training years have only 2 bad days and a highest reading of 48, and a tree model can't predict above what
 # it has seen. Predicting the change from today, and averaging with Ridge, fixed most of that.
+#
+# **Also tried and dropped: upwind smoke.** Smoke that reaches the Midwest often comes from Canada, so we added
+# the heaviest NOAA-mapped smoke 300, 600 and 900 km upwind of each city today (`fetch_upwind_smoke.py`). Upwind
+# smoke came before 16 of the 21 training arrival days, against 17% of ordinary days, so the signal is real. But on
+# the training-year check it changed nothing (average error 2.49 with or without it), so we left it out. Our guess:
+# when 2023 is hidden, the other training years have only 2 bad days, so the model can't learn what upwind smoke means.
+# We also noticed that leaving out just six rows moved the training-year warning count by a few days. With 38 bad
+# days, mostly from one event, warning numbers are noisy; the average error is much steadier.
 
 # %% [markdown]
 # ## 7. The test: 2025, scored once
