@@ -18,7 +18,7 @@ NAMES = {"pred_model": "SmokeCheck", "pred_noaa": "NOAA's official forecast",
 
 OK = "✅ OK to practice outside"
 INDOORS = "🚫 Move practice indoors"
-NOT_READY = "⏳ No forecast for this day"
+NOT_READY = "⏳ No forecast yet"
 COLOR = {OK: "#1b7a3e", INDOORS: "#b42318", NOT_READY: "#5b6470"}
 SYMBOL = {OK: "circle", INDOORS: "square", NOT_READY: "circle-open"}  # shape too, not color alone
 FOOTER = "Smoke levels are daily-average PM2.5 in µg/m³. Prototype, not health advice."
@@ -34,6 +34,7 @@ CSS = """
 .check span { display: block; color: var(--neutral-600); font-size: 0.95rem; }
 .check b { font-size: 1.5rem; }
 .check .title { border: none; padding: 10px 4px; font-weight: 600; align-self: center; }
+.small { color: var(--neutral-600); font-size: 0.95rem; margin-top: 10px; }
 """
 FONT = [gr.themes.GoogleFont("Barlow", weights=(400, 600, 800)), "system-ui", "sans-serif"]
 THEME = gr.themes.Soft(primary_hue="emerald", neutral_hue="slate", font=FONT)
@@ -93,37 +94,59 @@ def right_or_wrong(call, measured, limit):
     return "✗ Missed a bad day" if bad else "✗ False alarm"
 
 
-def card(rows, city, date, metrics):
+def replay_view(rows, city, date, metrics):
+    """Everything the 2025 replay shows for one city and day, as plain values (no layout)."""
     match = rows[(rows["city"] == city) & (rows["date"] == date)]
     # No row for this city and day: use an empty row so every value below reads as missing.
     row = match.iloc[0] if len(match) else pd.Series(dtype=float)
-    pred, cut, limit = row.get("pred_model"), cutoff(metrics, "pred_model"), bad_day_limit(metrics)
-    call = verdict(pred, cut)
-    why = "" if call == NOT_READY else f"Smoke forecast {pred:.1f} · indoors above {cut:g}"
+    cut, limit = cutoff(metrics, "pred_model"), bad_day_limit(metrics)
+    call, measured = verdict(row.get("pred_model"), cut), row.get("obs_pm25")
+    return {"city": city, "date": date, "call": call, "forecast": row.get("pred_model"), "warn_at": cut,
+            "measured": measured, "bad_day": None if pd.isna(measured) else bool(measured > limit),
+            "noaa": row.get("pred_noaa"), "result": right_or_wrong(call, measured, limit)}
 
-    measured = row.get("obs_pm25")
-    measured_words = "" if pd.isna(measured) else ("a bad day" if measured > limit else "not a bad day")
-    noaa = "" if pd.isna(row.get("pred_noaa")) else (
-        f"<div><span>NOAA's forecast</span><b>{row['pred_noaa']:.1f}</b></div>")
 
+def card(rows, city, date, metrics):
+    v = replay_view(rows, city, date, metrics)
+    why = "" if v["call"] == NOT_READY else f"Smoke forecast {v['forecast']:.1f} · indoors above {v['warn_at']:g}"
+    measured_words = {None: "", True: "a bad day", False: "not a bad day"}[v["bad_day"]]
+    noaa = "" if pd.isna(v["noaa"]) else f"<div><span>NOAA's forecast</span><b>{v['noaa']:.1f}</b></div>"
     return f"""
-    <div class="verdict" style="background:{COLOR[call]}">
+    <div class="verdict" style="background:{COLOR[v['call']]}">
       <div class="where">{city} · practice on {pretty(date)}</div>
-      <div class="call">{call}</div>
+      <div class="call">{v['call']}</div>
       <div class="why">{why}</div>
     </div>
     <div class="check">
       <div class="title">Was it right?</div>
-      <div><span>Measured that day</span><b>{number(measured, "no measurement")}</b> {measured_words}</div>
+      <div><span>Measured that day</span><b>{number(v['measured'], "no measurement")}</b> {measured_words}</div>
       {noaa}
-      <div><span>SmokeCheck</span><b>{right_or_wrong(call, measured, limit)}</b></div>
+      <div><span>SmokeCheck</span><b>{v['result']}</b></div>
     </div>"""
 
 
+def plain(view):
+    """A view dict with JSON-safe values: missing -> None, numbers -> float rounded to 1 dp, times -> ISO text."""
+    def fix(value):
+        if isinstance(value, pd.Timestamp):
+            return value.isoformat()
+        if isinstance(value, (bool, str)) or value is None:
+            return value
+        return None if pd.isna(value) else round(float(value), 1)
+    return {key: fix(value) for key, value in view.items()}
+
+
+def map_points(rows, date, metrics):
+    """One row per city for the map: city, lat, lon, forecast and call (plain values)."""
+    day_rows = rows[rows["date"] == date]
+    return pd.DataFrame({"city": day_rows["city"], "lat": day_rows["lat"], "lon": day_rows["lon"],
+                         "forecast": day_rows["pred_model"],
+                         "call": [verdict(p, cutoff(metrics, "pred_model")) for p in day_rows["pred_model"]]})
+
+
 def city_map(rows, date, metrics):
-    day_rows = rows[rows["date"] == date].copy()
-    day_rows["call"] = [verdict(pred, cutoff(metrics, "pred_model")) for pred in day_rows["pred_model"]]
-    day_rows["label"] = [f"{r['city']} {r['pred_model']:.0f}" if pd.notna(r["pred_model"]) else r["city"]
+    day_rows = map_points(rows, date, metrics)
+    day_rows["label"] = [f"{r['city']} {r['forecast']:.0f}" if pd.notna(r["forecast"]) else r["city"]
                          for _, r in day_rows.iterrows()]
     fig = px.scatter_geo(
         day_rows, lat="lat", lon="lon", text="label", hover_name="city",
@@ -174,6 +197,58 @@ def arrival_note(rows, metrics):
     return f"**Weak spot:** it misses the day smoke first arrives (warned on {warned} of {len(arrivals)} in 2025)."
 
 
+def load_tomorrow(data_dir=DATA):
+    """The live forecast that forecast_tomorrow.py writes each evening, or None if it has not run yet."""
+    path = data_dir / "tomorrow.csv"
+    if not path.exists():
+        return None
+    rows = pd.read_csv(path)
+    return rows.assign(date=rows["target_date"])  # city_map looks rows up by "date"
+
+
+def is_out_of_date(target_date, today):
+    """A forecast is out of date once its practice day has passed."""
+    return target_date < today
+
+
+def live_view(rows, city, metrics, today):
+    """Everything the Tomorrow tab shows for one city, as plain values (no layout).
+    state is "none" (no forecast file yet), "out_of_date", "waiting" (an input is missing) or "ok".
+    today is 'YYYY-MM-DD' in Central time."""
+    cut = cutoff(metrics, "pred_model")
+    match = None if rows is None else rows[rows["city"] == city]
+    if match is None or match.empty:
+        return {"state": "none", "city": city, "call": NOT_READY, "warn_at": cut}
+    row = match.iloc[0]
+    view = {"city": city, "date": row["target_date"], "warn_at": cut, "forecast": row["pred_model"],
+            "noaa": row.get("pred_noaa"), "made_at": pd.Timestamp(row["made_at"]), "status": row["status"]}
+    if is_out_of_date(row["target_date"], today):
+        return {**view, "state": "out_of_date", "call": NOT_READY}
+    call = verdict(row["pred_model"], cut)
+    return {**view, "state": "waiting" if call == NOT_READY else "ok", "call": call}
+
+
+def live_card(rows, city, metrics, today):
+    v = live_view(rows, city, metrics, today)
+    if v["state"] == "none":
+        return (f'<div class="verdict" style="background:{COLOR[NOT_READY]}"><div class="call">{NOT_READY}</div>'
+                f'<div class="why">The forecast runs each evening.</div></div>')
+    why = {"out_of_date": f"The last forecast was for {pretty(v['date'])}. It runs again this evening.",
+           "waiting": f"Waiting on: {v['status']}",
+           "ok": f"Smoke forecast {v['forecast']:.1f} · indoors above {v['warn_at']:g}"}[v["state"]]
+    note = f"Forecast made {v['made_at']:%A} at {v['made_at']:%-I:%M %p}."
+    if v["state"] == "ok" and v["status"] != "ok":
+        # The exact fallback is in v["status"]; a coach only needs to know the forecast firms up later.
+        note += " Some of today's readings weren't in yet; it updates after 7 PM."
+    return f"""
+    <div class="verdict" style="background:{COLOR[v['call']]}">
+      <div class="where">{city} · practice on {pretty(v['date'])}</div>
+      <div class="call">{v['call']}</div>
+      <div class="why">{why}</div>
+    </div>
+    <div class="small">{note}</div>"""
+
+
 ROWS = load_rows()
 METRICS = load_metrics()
 CITIES = sorted(ROWS["city"].unique())
@@ -191,12 +266,30 @@ def step(date, days):
     return DATES[i]
 
 
+def today_central():
+    return pd.Timestamp.now(tz="America/Chicago").strftime("%Y-%m-%d")
+
+
+def show_live(city):
+    rows = load_tomorrow()  # read again each time, so a new evening's forecast shows without a restart
+    fresh = rows is not None and not is_out_of_date(rows["target_date"].iloc[0], today_central())
+    figure = city_map(rows, rows["target_date"].iloc[0], METRICS) if fresh else None
+    # No forecast: hide the map instead of drawing an empty box.
+    return live_card(rows, city, METRICS, today_central()), gr.update(value=figure, visible=fresh)
+
+
 with gr.Blocks(title="SmokeCheck") as demo:
-    gr.Markdown("# SmokeCheck\n**Wildfire smoke: should tomorrow's practice move indoors?** "
-                "The call is made the evening before. This demo replays 2025, so you can see if each call was right.")
+    gr.Markdown("# SmokeCheck\n**Wildfire smoke: should tomorrow's practice move indoors?**")
     first_card, first_map = show(START_CITY, START_DATE)
 
-    with gr.Tab("The call"):
+    with gr.Tab("Tomorrow"):
+        live_city = gr.Dropdown(CITIES, value=START_CITY, label="City")
+        live_box = gr.HTML()  # filled by demo.load below, each time the page opens
+        live_map = gr.Plot(show_label=False, visible=False)
+
+    with gr.Tab("2025 test run"):
+        gr.Markdown("How we tested it: the model never saw 2025. Pick any day and see the call it would have made "
+                    "the evening before, and whether it was right.")
         with gr.Row(equal_height=True):
             city = gr.Dropdown(CITIES, value=START_CITY, label="City", scale=2)
             day = gr.Dropdown(DAY_CHOICES, value=START_DATE, label="Practice day (2025)", scale=2)
@@ -206,26 +299,25 @@ with gr.Blocks(title="SmokeCheck") as demo:
         card_box = gr.HTML(first_card)
         gr.Markdown("### Every city that day")
         map_box = gr.Plot(first_map, show_label=False)
-
-    with gr.Tab("Does it work?"):
         if "overall" in METRICS:
             limit = bad_day_limit(METRICS)
-            gr.Markdown(f"All of 2025, never used for training. A bad day is measured above {limit:g}.")
+            gr.Markdown(f"### All of 2025\nA bad day is measured above {limit:g}.")
             section = dict(METRICS["overall"])
             section["noaa_at_limit"] = stats_at_line(ROWS, "pred_noaa", limit, limit)
             gr.Dataframe(scoreboard(section, METRICS["cost_of_a_miss"]))
             gr.Markdown(arrival_note(ROWS, METRICS))
-        else:
-            gr.Markdown("Results appear here once the model is evaluated.")
 
     gr.Markdown(FOOTER)
 
+    live_city.change(show_live, live_city, [live_box, live_map], show_progress="hidden")
     outputs = [card_box, map_box]
     city.change(show, [city, day], outputs, show_progress="hidden")
     day.change(show, [city, day], outputs, show_progress="hidden")
     # The buttons only move the day; day.change then redraws.
     before.click(lambda d: step(d, -1), day, day, show_progress="hidden")
     after.click(lambda d: step(d, 1), day, day, show_progress="hidden")
+    # Reload the live forecast whenever the page opens, so a long-running app never shows yesterday's file.
+    demo.load(show_live, live_city, [live_box, live_map], show_progress="hidden")
 
 if __name__ == "__main__":
     # Always the light look, so it is the same on every laptop and projector.

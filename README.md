@@ -11,7 +11,11 @@ Veritas AI International High School Hackathon 2026 · Track: AI + Climate · st
 - **Notebook (the main deliverable):** open [`smokecheck.ipynb`](smokecheck.ipynb) in Google Colab and choose
   Runtime → Run all. It needs no API keys or uploads, finishes in under a minute, and reads the small files in
   `data/`. Its first cell installs scikit-learn 1.9.1, the version our numbers come from.
-- **App:** `pip install -r app/requirements.txt`, then `python app/app.py` from the repo folder.
+- **Tomorrow's forecast (live):** `pip install -r requirements.txt`, then `python forecast_tomorrow.py` each evening
+  (best after about 8 PM Central). It refits the tested model, pulls this evening's public data (no API keys) and
+  writes `data/tomorrow.csv`, which the app's first screen reads.
+- **App:** `pip install -r app/requirements.txt`, then `python app/app.py` from the repo folder. The "Tomorrow"
+  tab shows the live forecast; "2025 test run" replays every call from the test year.
 
 ## Results on the held-out test year (2025, six cities, 35 days above 35 µg/m³)
 
@@ -66,6 +70,7 @@ python fetch_evening.py       # each city's 2-7 PM hourly reading -> data/evenin
 - **NOAA National Air Quality Forecast Capability (NAQFC)**, bias-corrected 24-hour PM2.5, NOAA Open Data
   Dissemination on AWS: https://registry.opendata.aws/noaa-nws-naqfc-pds/
 - **NOAA Hazard Mapping System** smoke polygons: https://www.ospo.noaa.gov/products/land/hms.html
+- **AirNow** hourly data files (live mode only; preliminary readings before EPA checks them): https://files.airnowtech.org/
 - **Copernicus Atmosphere Monitoring Service (CAMS)** global atmospheric composition forecasts, via the
   **Open-Meteo Air Quality API**: https://open-meteo.com/en/docs/air-quality-api. Model estimates (about 45 km
   grid), not measurements.

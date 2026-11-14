@@ -660,6 +660,21 @@ print(week[["date", "obs_pm25", "pred_persistence", "pred_noaa", "pred_cams", "p
 # - Six cities, 2.4 years of training data. Monitors are averaged over each metro area, so one neighbourhood can be worse.
 
 # %% [markdown]
+# ### Live mode: tomorrow's forecast for real
+#
+# `forecast_tomorrow.py` makes a real forecast for tomorrow, the app's first screen. It refits exactly the model
+# above (and stops unless its 2025 forecasts match `data/predictions.csv`), then builds the same inputs from live
+# public data: AirNow's hourly readings, today's NOAA smoke map and NAQFC run, and Open-Meteo for CAMS and
+# tomorrow's weather. What's different from the test:
+#
+# - **The model is frozen as tested.** It was trained on Aug 2022 to Dec 2024 and never retrained on 2025.
+# - **AirNow, not EPA's archive.** We checked our AirNow averages against EPA's on 6 days of 2025: 35 of 36
+#   city-days within 1.5 µg/m³. The one bigger gap (Minneapolis, Jul 30: +3.3) is because AirNow has only the
+#   continuous monitors, and EPA also averages in filter samples that read lower that day.
+# - **Today is partial.** The forecast uses the hours reported so far, so it's best run after about 8 PM Central,
+#   once the 2-7 PM reading is in. The `status` column says when an input is partial or missing.
+
+# %% [markdown]
 # ## 11. Save the forecasts for the app
 
 # %%
@@ -701,10 +716,11 @@ print("the results-at-a-glance table matches")
 # - **EPA AirData** daily and hourly PM2.5 (parameter 88101), https://aqs.epa.gov/aqsweb/airdata/download_files.html
 # - **CAMS global atmospheric composition forecasts** (Copernicus Atmosphere Monitoring Service) via the
 #   **Open-Meteo Air Quality API**, https://open-meteo.com/en/docs/air-quality-api
-# - **Open-Meteo** Historical Forecast API and Previous Runs API (weather), https://open-meteo.com
+# - **Open-Meteo** Historical Forecast API and Previous Runs API (weather), and its Forecast API (live mode), https://open-meteo.com
 # - **NOAA National Air Quality Forecast Capability (NAQFC)** PM2.5 forecasts, NOAA Open Data on AWS,
 #   https://registry.opendata.aws/noaa-nws-naqfc-pds/ (bias-corrected 24-hour average, CONUS 5 km grid)
 # - **NOAA Hazard Mapping System** smoke polygons, https://www.ospo.noaa.gov/products/land/hms.html
+# - **AirNow** hourly data files (US EPA and partners; live mode only), https://files.airnowtech.org/
 # - Libraries: pandas, NumPy, scikit-learn, matplotlib, pyshp, eccodes (reads NOAA's GRIB files), jupytext
 # - AI tools: Claude (Anthropic), through Claude Code. It wrote most of the code (data scripts, this notebook, the app)
 #   and ran the experiments, researched which datasets and forecast archives to use, and drafted the write-up.

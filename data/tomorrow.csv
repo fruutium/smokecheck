@@ -1,0 +1,7 @@
+target_date,made_at,city,lat,lon,pred_model,pred_noaa,obs_today,hours_today,status,warn_at
+2026-11-15,2026-11-14T12:17:30-06:00,Chicago,41.88,-87.63,4.7,3.83,2.49,12,"2-7 PM window not reported yet, evening_today = today's mean so far",32.0
+2026-11-15,2026-11-14T12:17:30-06:00,Milwaukee,43.04,-87.91,5.06,7.87,1.59,12,"2-7 PM window not reported yet, evening_today = today's mean so far",32.0
+2026-11-15,2026-11-14T12:17:30-06:00,Madison,43.07,-89.4,6.11,5.39,2.75,12,"2-7 PM window not reported yet, evening_today = today's mean so far",32.0
+2026-11-15,2026-11-14T12:17:30-06:00,Minneapolis,44.98,-93.27,8.88,10.69,6.88,12,"2-7 PM window not reported yet, evening_today = today's mean so far",32.0
+2026-11-15,2026-11-14T12:17:30-06:00,Detroit,42.33,-83.05,3.82,2.83,2.46,13,"2-7 PM window not reported yet, evening_today = today's mean so far",32.0
+2026-11-15,2026-11-14T12:17:30-06:00,St. Louis,38.63,-90.2,7.56,11.41,3.47,12,"2-7 PM window not reported yet, evening_today = today's mean so far",32.0
