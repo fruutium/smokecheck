@@ -20,7 +20,7 @@ We started from suggested project 4.3.2 (next-day air quality forecast). Instead
 ## How it works
 - **Data:** daily EPA PM2.5 for Chicago, Milwaukee, Madison, Minneapolis, Detroit and St. Louis (7,476 city-days). Train Aug 2022 – Dec 2024; test all of 2025, never shuffled. **Open-Meteo air-quality values (CAMS) are model estimates, not measurements.**
 - **Model:** the average of a Ridge regression (predicts tomorrow's PM2.5) and gradient-boosted trees (predict the change from today).
-- **Warning lines:** a missed bad day (above 35) counts as 5 false alarms. Each forecast's line is the median best line over 200 resampled copies of 2022–2024 (whole weeks drawn at random). SmokeCheck's is 24.5 because it runs low on smoke days.
+- **Warning lines:** a missed bad day (above 35) counts as 5 false alarms. Each forecast's line is the middle of the cheapest lines over 200 resampled copies of 2022–2024, a rule we fixed before computing it. SmokeCheck's is 24.5, but those years can't pin it down: other random seeds put it anywhere from about 24 to 29.
 
 ## Results (2025, 35 bad city-days)
 
@@ -32,13 +32,13 @@ We started from suggested project 4.3.2 (next-day air quality forecast). Instead
 | Persistence (tomorrow = today) | 3.40 | 37 | 12 | 19 | 134 |
 | Raw CAMS (optimistic*) | 3.72 | 30 | 17 | 17 | 107 |
 
-**Takeaway:** SmokeCheck's average error is 19% lower than NOAA's (2.58 vs 3.20), and its warnings cost 106 against NOAA's 123 at the plain 35 line. With hindsight-best lines, SmokeCheck costs 102, NOAA 118 and persistence 106, so we beat NOAA at every line up to 26.5 but only tie "tomorrow = today". *Raw CAMS does best in hindsight (100), but its archive isn't a true day-ahead forecast and partly "sees" the day's smoke.
+**How sure are we?** Resampling 2025's weeks 1,000 times, SmokeCheck's average error beats NOAA's by 0.60 µg/m³ (95% range 0.27–0.98) and persistence's by 0.82, in every resample. On the move-indoors call it is roughly even with NOAA (ahead in 60% of resamples) and ahead of persistence in 94%. *Raw CAMS is optimistic: its archive isn't a true day-ahead forecast and partly "sees" the day's smoke.
 
-**Where it fails.** When smoke *arrives* overnight, SmokeCheck caught only 6 of 21 days. On July 31 in Chicago it said 13.7, NOAA 13.7, and the air measured 65.6. Our model leans on today's readings, which are still clean. Its 80% range held the real value on 79.6% of days but only 37% of bad days. When smoke *lingers*, it caught 12 of 14 (the next day in Chicago: SmokeCheck 54.0, NOAA 8.7, measured 45.5).
+**Where it fails.** When smoke *arrives* overnight, SmokeCheck caught only 6 of 21 days, and all 6 were already hazy the day before (19–34 µg/m³). It doesn't catch a jump from clean to smoky: on July 31 in Chicago it said 13.7, NOAA 13.7, and the air measured 65.6. Its 80% range held the real value on 79.6% of days but only 37% of bad days. When smoke *lingers*, it caught 12 of 14.
 
 **Tried and dropped:** trees predicting the PM2.5 level (1 of 38 bad training days caught); smoke mapped 300–900 km upwind (no change in error); and adding 2018–2022 (lower error but higher warning cost on training years, so never scored on 2025).
 
-**Honesty notes:** before fixing our process we saw some 2025 results: the baselines at a plain 35 line, one scratch run of model variants, and our first warning rule (the cheapest training line) at both 24 and 29.5, after a 0.005 µg/m³ rounding change made it jump. We tried a few ways of grouping the range on 2025 before fixing its rule. We picked the cities knowing their smoky-day counts, 2025 included.
+**Honesty notes:** we looked at 2025 seven times before the final numbers (listed in the notebook's section 10): a scratch run of model variants; the baselines at a plain 35 line; our model at two old cut-offs (24 and 29.5); a few groupings of the range; choosing the cities; making NOAA the main comparison after scoring our model; and pinning scikit-learn after older versions gave 17 caught instead of 18.
 
 ## What we'd do next
 Add more cities that get smoke, such as Duluth (more years added only 3 bad smoke days). Forecast practice hours (3–6 PM) and test SmokeCheck with a real athletic director.
