@@ -6,6 +6,7 @@ The whole backdrop is the sky over a practice field. Its colour follows the fore
 
 ## Before you start
 - Start the app (`python app/app.py`, then http://127.0.0.1:7860) a few minutes early, with internet on. Only the Tomorrow view needs the internet.
+- Backup: the hosted copy at https://fruutium.github.io/smokecheck/ shows the same screens. It needs the internet for every view, so keep the laptop copy as the main one.
 - Set the picker to **Minneapolis** and reload the page. The app remembers the last city, and a reload goes back to the Tomorrow view and to July 31.
 - Wait until "Updating…" is gone from the Tomorrow view.
 - Browser window about 1280×800, zoom 100%.

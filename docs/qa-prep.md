@@ -108,7 +108,7 @@ SmokeCheck forecasts tomorrow's daily PM2.5 for six Midwest cities, so a high-sc
 **16.**
 - **Q:** Is the Tomorrow screen a real forecast? Where does the data come from and how fresh is it?
 - **Who answers:** Aiden
-- **A:** Yes. It's the model we tested, run on today's public data: AirNow's hourly monitor readings, NOAA's forecast and smoke map, and Open-Meteo for CAMS and tomorrow's weather. The app runs it by itself when the saved forecast is old, and the screen says when it was made. The 2 to 7 PM reading is complete about 8 PM Central. Before that it uses the day's readings so far and redoes the forecast every 30 minutes.
+- **A:** Yes. It's the model we tested, run on today's public data: AirNow's hourly monitor readings, NOAA's forecast and smoke map, and Open-Meteo for CAMS and tomorrow's weather. On our hosted site a scheduled job reruns it every 30 minutes each evening; run on a laptop, the app reruns it by itself when the saved forecast is old. The screen says when it was made. The 2 to 7 PM reading is complete about 8 PM Central. Before that it uses the day's readings so far and redoes the forecast every 30 minutes.
 - **If they push:** "A run takes about a minute the first time, then about 15 seconds. If it fails, say with no internet, the page keeps the last forecast, says 'Couldn't update', and retries after 5 minutes."
 
 **17.**
