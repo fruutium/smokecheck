@@ -375,4 +375,6 @@ print("saved data/predictions.csv and data/metrics.json")
 #   https://registry.opendata.aws/noaa-nws-naqfc-pds/ (bias-corrected 24-hour average, CONUS 5 km grid)
 # - **NOAA Hazard Mapping System** smoke polygons, https://www.ospo.noaa.gov/products/land/hms.html
 # - Libraries: pandas, NumPy, scikit-learn, matplotlib, pyshp, eccodes (reads NOAA's GRIB files), jupytext
-# - AI tools: Claude (Anthropic), used through Claude Code to help write and debug the code. [Team: add what you used it for.]
+# - AI tools: Claude (Anthropic), through Claude Code. It wrote most of the code (data scripts, this notebook, the app)
+#   and ran the experiments, researched which datasets and forecast archives to use, and drafted the write-up.
+#   We chose the track and project and picked which ideas to try from the options it proposed.
