@@ -5,13 +5,13 @@
      FORM, team details: Abhiddyu Chandiwal and Aiden Patel. School and emails are typed on the form by us, not stored here.
      One-sentence pitch (FORM): SmokeCheck helps a Midwest high-school athletic director who has to decide whether tomorrow's practice is safe outdoors on a wildfire-smoke day by taking their city and tomorrow's date and telling them "practice outside" or "move indoors", with the PM2.5 forecast behind the call. -->
 
-**Track:** AI + Climate · **Team:** Abhiddyu Chandiwal and Aiden Patel · *A prototype, not medical or health advice.*
+**Track:** AI + Climate · **Team:** Abhiddyu Chandiwal and Aiden Patel · [Try it live](https://fruutium.github.io/smokecheck/) · *A prototype, not medical or health advice.*
 
 ## The problem
 An athletic director decides the evening before whether practice stays outside. On July 31, 2025, Minneapolis's air reached 69.1 µg/m³ of fine particles (PM2.5), almost twice the EPA's 24-hour limit of 35. NOAA's official forecast the day before said 18.7.
 
 ## What we built
-SmokeCheck gives an athletic director two things: tonight's real call for tomorrow's practice in their city (a live forecast the app refreshes by itself when opened), and a replay of every 2025 day showing whether each call was right: *Minneapolis, July 31, 2025 → **Move practice indoors** (forecast 41.3, above SmokeCheck's warning line of 32; measured 69.1).*
+SmokeCheck gives an athletic director two things: tonight's real call for tomorrow's practice in their city (a live forecast, remade every 30 minutes each evening), and a replay of every 2025 day showing whether each call was right: *Minneapolis, July 31, 2025 → **Move practice indoors** (forecast 41.3, above SmokeCheck's warning line of 32; measured 69.1).*
 
 ## What we added
 <!-- FORM: the paragraph below is reused word for word as the form's "What we added" answer. -->
@@ -45,4 +45,4 @@ We started from suggested project 4.3.2 (next-day air quality forecast). Instead
 ## Sources
 - **Data:** [EPA AirData daily and hourly PM2.5](https://aqs.epa.gov/aqsweb/airdata/download_files.html) · [NOAA NAQFC on AWS](https://registry.opendata.aws/noaa-nws-naqfc-pds/) · [Open-Meteo Air Quality API](https://open-meteo.com/en/docs/air-quality-api) (Copernicus CAMS) · Open-Meteo [Historical Forecast](https://open-meteo.com/en/docs/historical-forecast-api) and [Previous Runs](https://open-meteo.com/en/docs/previous-runs-api) · [NOAA HMS smoke polygons](https://www.ospo.noaa.gov/products/land/hms.html) · [AirNow](https://files.airnowtech.org/) (live mode)
 - **Libraries:** scikit-learn 1.9.1, pandas, NumPy, matplotlib, pyshp, eccodes, jupytext, FastAPI, uvicorn, GSAP, Google Fonts (Big Shoulders Display, Schibsted Grotesk), [React Bits](https://reactbits.dev) (three effects, rebuilt in plain JavaScript) · **Video:** HyperFrames; music "Deliberate Thought", Kevin MacLeod (incompetech.com, CC BY 4.0)
-- **AI tools:** Claude (Anthropic), through Claude Code. It wrote most of the code (the data scripts, the model and evaluation notebook, and the web app, designed from mockups we chose between) and ran the experiments. Before the event it researched datasets and project ideas; during it, it checked which forecast archives were truly day-ahead and drafted this write-up and the video script, which we edited, and built the video's edit. We chose the track and project, picked which improvements to try from the options it proposed (an upwind-smoke feature, which we dropped, and the NOAA baseline), and read through all the code so we can explain it.
+- **AI tools:** Claude (Anthropic), through Claude Code. It wrote most of the code (the data scripts, the model and evaluation notebook, and the web app, from mockups we chose between) and ran the experiments. Before the event it researched datasets and project ideas; during it, it checked which archives were truly day-ahead and drafted this write-up and the video script, which we edited, and built the video's edit. We chose the track and project, picked which improvements to try from the options it proposed (an upwind-smoke feature, which we dropped, and the NOAA baseline), and read all the code so we can explain it.
