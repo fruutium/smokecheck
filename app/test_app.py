@@ -84,6 +84,8 @@ if (app.DATA / "predictions.csv").exists() and (app.DATA / "metrics.json").exist
     assert "a bad day" in html
     assert (f"not {metrics['threshold']:g}" in html and f"missed bad day as {metrics['cost_of_a_miss']:g} false alarms" in html)
     assert f"warns above {metrics['warn_at']['pred_model']:g} µg/m³, not" in html
+    assert "anywhere from about 24 to 29 is defensible" in html
+    assert "at the EPA's 35 line: no warning" in html  # NOAA 13.4 is under 35 too
 
     # Chicago 2025-07-31: SmokeCheck 13.7 and NOAA 13.7 both say outside; measured 65.6.
     # Raw CAMS 34.3 warns, but it sits in the baselines line, marked optimistic.
@@ -118,6 +120,23 @@ if (app.DATA / "predictions.csv").exists() and (app.DATA / "metrics.json").exist
     assert misses["SmokeCheck off by"].is_monotonic_decreasing
     assert misses.iloc[0]["SmokeCheck off by"] == (rows["pred_model"] - rows["obs_pm25"]).abs().max()
     assert "Smoke plume" in misses and "Raw CAMS estimate" in misses and "NOAA day-ahead forecast" in misses
+
+    # NOAA at the plain 35 line on 2025: 12 caught, 8 false alarms, cost 5 × 23 missed + 8 = 123.
+    at_35 = app.stats_at_line(rows, "pred_noaa", 35, 35)
+    assert (at_35["caught"], at_35["missed"], at_35["false_alarms"]) == (12, 23, 8)
+    table = app.scoreboard({"noaa_at_limit": at_35}, metrics["cost_of_a_miss"])
+    assert table.iloc[0]["Forecaster"] == "NOAA at the plain 35 line"
+    assert table.iloc[0]["Cost (5 × missed + false alarms)"] == 123
+    # The same counts at NOAA's own cut-off match metrics.json, so the two NOAA rows are comparable.
+    own = app.stats_at_line(rows, "pred_noaa", metrics["warn_at"]["pred_noaa"], 35)
+    assert own["caught"] == metrics["overall"]["pred_noaa"]["caught"]
+    assert own["false_alarms"] == metrics["overall"]["pred_noaa"]["false_alarms"]
+    assert own["mae"] == metrics["overall"]["pred_noaa"]["mae"]
+    # A day with NOAA above 35 says "warn" at the plain line (Chicago 08-01 has NOAA 8.7: no warning).
+    html = app.card(rows, "Chicago", "2025-08-01", metrics)
+    assert "at the EPA's 35 line: no warning" in html
+    high = rows[rows["pred_noaa"] > 35].iloc[0]
+    assert "at the EPA's 35 line: warn" in app.card(rows, high["city"], high["date"], metrics)
 
     # "Does it work?": one row per forecaster, SmokeCheck first.
     table = app.scoreboard(metrics["overall"])
