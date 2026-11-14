@@ -452,6 +452,17 @@ print(pd.DataFrame({"earlier model": {"average error": 2.58, "warns above": 24.5
                     "NOAA's forecast": summary_2025(test, "pred_noaa")}).T.to_string())
 
 # %% [markdown]
+# **What the change did on 2025: better numbers, worse warnings.** The average error fell from 2.58 to 2.36
+# (NOAA's own forecast: 3.20), so on an ordinary day the forecast is closer. But the warnings got worse. The cut-off
+# chosen on the training years rose from 24.5 to 32, and at it the model caught 11 of the 35 bad days instead of 18,
+# with 7 false alarms instead of 21: cost 127 instead of 106, and none of the 21 arrival days caught instead of 6.
+# The training years did not warn us (cost 112 vs 117 there). Our best guess at why: the model now leans most on
+# NOAA's forecast (section 6), and NOAA missed most 2025 arrivals too (on July 31 it said 13 to 16 µg/m³ for
+# Chicago, Milwaukee and Madison, which measured 66 to 84). The cost curve in section 8 shows that a lower cut-off
+# would have done much better on 2025, but picking a cut-off from the test year would be cheating, so we keep the
+# rule we set in advance and report both results.
+
+# %% [markdown]
 # ### How sure is the forecast? A likely range
 #
 # One number hides how unsure we are, so each forecast also gets a range meant to hold the measurement 8 days out
@@ -605,7 +616,7 @@ print("saved data/predictions.csv and data/metrics.json")
 # %% [markdown]
 # ## Sources
 #
-# - **EPA AirData** daily PM2.5 (parameter 88101), https://aqs.epa.gov/aqsweb/airdata/download_files.html
+# - **EPA AirData** daily and hourly PM2.5 (parameter 88101), https://aqs.epa.gov/aqsweb/airdata/download_files.html
 # - **CAMS global atmospheric composition forecasts** (Copernicus Atmosphere Monitoring Service) via the
 #   **Open-Meteo Air Quality API**, https://open-meteo.com/en/docs/air-quality-api
 # - **Open-Meteo** Historical Forecast API and Previous Runs API (weather), https://open-meteo.com
