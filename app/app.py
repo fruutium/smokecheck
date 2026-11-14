@@ -7,6 +7,8 @@ import gradio as gr
 import pandas as pd
 import plotly.express as px
 
+import refresh  # app/refresh.py: reruns forecast_tomorrow.py in the background when the forecast is stale
+
 # In the repo the data is in ../data; in a Hugging Face Space it would sit next to app.py, in ./data.
 HERE = Path(__file__).parent
 DATA = HERE / "data" if (HERE / "data").exists() else HERE.parent / "data"
@@ -228,18 +230,22 @@ def live_view(rows, city, metrics, today):
     return {**view, "state": "waiting" if call == NOT_READY else "ok", "call": call}
 
 
-def live_card(rows, city, metrics, today):
+def live_card(rows, city, metrics, today, updating=False, failed=False):
+    """updating: a new forecast is being made right now. failed: the last attempt to make one didn't work."""
     v = live_view(rows, city, metrics, today)
+    update_note = ("Getting the latest readings… this takes about a minute." if updating
+                   else "Couldn't reach the data sources just now; it tries again in a few minutes." if failed else "")
     if v["state"] == "none":
         return (f'<div class="verdict" style="background:{COLOR[NOT_READY]}"><div class="call">{NOT_READY}</div>'
-                f'<div class="why">The forecast runs each evening.</div></div>')
-    why = {"out_of_date": f"The last forecast was for {pretty(v['date'])}. It runs again this evening.",
+                f'<div class="why">{update_note or "The forecast is made when the app opens."}</div></div>')
+    why = {"out_of_date": f"The last forecast was for {pretty(v['date'])}.",
            "waiting": f"Waiting on: {v['status']}",
            "ok": f"Smoke forecast {v['forecast']:.1f} · indoors above {v['warn_at']:g}"}[v["state"]]
     note = f"Forecast made {v['made_at']:%A} at {v['made_at']:%-I:%M %p}."
     if v["state"] == "ok" and v["status"] != "ok":
         # The exact fallback is in v["status"]; a coach only needs to know the forecast firms up later.
-        note += " Some of today's readings weren't in yet; it updates after 7 PM."
+        note += " Some of today's readings weren't in yet; it updates itself as they come in."
+    note = f"{note} {update_note}".strip()
     return f"""
     <div class="verdict" style="background:{COLOR[v['call']]}">
       <div class="where">{city} · practice on {pretty(v['date'])}</div>
@@ -271,11 +277,21 @@ def today_central():
 
 
 def show_live(city):
-    rows = load_tomorrow()  # read again each time, so a new evening's forecast shows without a restart
+    rows = load_tomorrow()  # read again each time, so a new forecast shows without a restart
+    updating = refresh.refresh_if_stale(rows)  # starts a background update if this one is old; never waits for it
     fresh = rows is not None and not is_out_of_date(rows["target_date"].iloc[0], today_central())
     figure = city_map(rows, rows["target_date"].iloc[0], METRICS) if fresh else None
+    card_html = live_card(rows, city, METRICS, today_central(), updating, refresh.last_run_failed())
     # No forecast: hide the map instead of drawing an empty box.
-    return live_card(rows, city, METRICS, today_central()), gr.update(value=figure, visible=fresh)
+    return card_html, gr.update(value=figure, visible=fresh)
+
+
+def check_update(city, was_updating):
+    """Every few seconds: redraw once when a background update finishes, otherwise change nothing."""
+    updating = refresh.is_running()
+    if was_updating and not updating:
+        return *show_live(city), False
+    return gr.skip(), gr.skip(), updating
 
 
 with gr.Blocks(title="SmokeCheck") as demo:
@@ -286,6 +302,8 @@ with gr.Blocks(title="SmokeCheck") as demo:
         live_city = gr.Dropdown(CITIES, value=START_CITY, label="City")
         live_box = gr.HTML()  # filled by demo.load below, each time the page opens
         live_map = gr.Plot(show_label=False, visible=False)
+        was_updating = gr.State(False)  # per open page: was an update running at the last check?
+        timer = gr.Timer(3)
 
     with gr.Tab("2025 test run"):
         gr.Markdown("How we tested it: the model never saw 2025. Pick any day and see the call it would have made "
@@ -318,6 +336,7 @@ with gr.Blocks(title="SmokeCheck") as demo:
     after.click(lambda d: step(d, 1), day, day, show_progress="hidden")
     # Reload the live forecast whenever the page opens, so a long-running app never shows yesterday's file.
     demo.load(show_live, live_city, [live_box, live_map], show_progress="hidden")
+    timer.tick(check_update, [live_city, was_updating], [live_box, live_map, was_updating], show_progress="hidden")
 
 if __name__ == "__main__":
     # Always the light look, so it is the same on every laptop and projector.

@@ -11,11 +11,11 @@ Veritas AI International High School Hackathon 2026 · Track: AI + Climate · st
 - **Notebook (the main deliverable):** open [`smokecheck.ipynb`](smokecheck.ipynb) in Google Colab and choose
   Runtime → Run all. It needs no API keys or uploads, finishes in under a minute, and reads the small files in
   `data/`. Its first cell installs scikit-learn 1.9.1, the version our numbers come from.
-- **Tomorrow's forecast (live):** `pip install -r requirements.txt`, then `python forecast_tomorrow.py` each evening
-  (best after about 8 PM Central). It refits the tested model, pulls this evening's public data (no API keys) and
-  writes `data/tomorrow.csv`, which the app's first screen reads.
 - **App:** `pip install -r app/requirements.txt`, then `python app/app.py` from the repo folder. The "Tomorrow"
-  tab shows the live forecast; "2025 test run" replays every call from the test year.
+  tab shows a real forecast for tomorrow: the app runs `forecast_tomorrow.py` by itself in the background whenever
+  its saved forecast is out of date (about a minute the first time, then ~15 s). That script refits the tested
+  model, pulls the latest public data (no API keys) and writes `data/tomorrow.csv`. "2025 test run" replays every
+  call from the test year.
 
 ## Results on the held-out test year (2025, six cities, 35 days above 35 µg/m³)
 

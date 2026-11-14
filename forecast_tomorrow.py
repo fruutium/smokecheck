@@ -397,7 +397,9 @@ def forecast():
                     "hours_today": int(city_days["hours"].get(days[-1], 0)), "status": status,
                     "warn_at": warn_at})
     out = pd.DataFrame(out)
-    out.to_csv("data/tomorrow.csv", index=False)
+    # Write a temporary file, then swap it in, so the app never reads a half-written forecast.
+    out.to_csv("data/tomorrow.csv.tmp", index=False)
+    os.replace("data/tomorrow.csv.tmp", "data/tomorrow.csv")
     print(rows[FEATURES].round(2).T.to_string())
     print(out.drop(columns=["made_at", "lat", "lon"]).to_string(index=False))
     print(f"saved data/tomorrow.csv in {time.time() - started:.0f} s")

@@ -132,6 +132,7 @@ if (app.DATA / "predictions.csv").exists() and (app.DATA / "metrics.json").exist
         space = Path(folder) / "space"
         (space / "data").mkdir(parents=True)
         shutil.copy(Path(app.__file__), space / "app.py")
+        shutil.copy(Path(app.__file__).parent / "refresh.py", space / "refresh.py")
         shutil.copy(app.DATA / "predictions.csv", space / "data")
         shutil.copy(app.DATA / "metrics.json", space / "data")
         spec = importlib.util.spec_from_file_location("space_app", space / "app.py")
@@ -176,7 +177,30 @@ assert app.live_view(None, first, live_metrics, "2026-11-14")["state"] == "none"
 # A city missing from the file gets the grey card, not a crash.
 assert app.NOT_READY in app.live_card(rows, "Nowhere", live_metrics, "2026-11-14")
 
-# 7. Without metrics.json nothing breaks and the bad-day limit is 35.
+# 7. When the app remakes the forecast by itself (app/refresh.py). Times are UTC; Central standard = UTC - 6.
+from datetime import datetime, timezone  # noqa: E402
+
+import refresh  # noqa: E402
+
+
+def at(text):
+    return datetime.fromisoformat(text).replace(tzinfo=timezone.utc)
+
+
+assert refresh.target_for(at("2026-11-15 01:00")) == "2026-11-15"  # 7 PM Saturday in Chicago: tomorrow is Sunday
+assert refresh.target_for(at("2026-11-15 06:30")) == "2026-11-16"  # 12:30 AM Sunday: tomorrow is now Monday
+with tempfile.TemporaryDirectory() as folder:
+    assert refresh.needs_refresh(None, at("2026-11-15 01:00"))  # no file yet
+    write_tomorrow(folder, "2026-11-15", [6.2] * 6)  # made 7:12 PM Saturday, all inputs ok
+    done = app.load_tomorrow(Path(folder))
+    write_tomorrow(folder, "2026-11-15", [6.2] * 6, status="2-7 PM window partial: 3 of 5 hours")
+    partial = app.load_tomorrow(Path(folder))
+assert not refresh.needs_refresh(done, at("2026-11-15 04:00"))  # complete and for the right day: leave it
+assert refresh.needs_refresh(done, at("2026-11-15 06:30"))  # past midnight: tomorrow moved on
+assert not refresh.needs_refresh(partial, at("2026-11-15 01:30"))  # partial, but only 18 minutes old
+assert refresh.needs_refresh(partial, at("2026-11-15 01:50"))  # partial and over 30 minutes old: redo it
+
+# 8. Without metrics.json nothing breaks and the bad-day limit is 35.
 assert app.bad_day_limit({}) == 35
 
 print("all checks passed")

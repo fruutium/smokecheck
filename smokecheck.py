@@ -662,7 +662,8 @@ print(week[["date", "obs_pm25", "pred_persistence", "pred_noaa", "pred_cams", "p
 # %% [markdown]
 # ### Live mode: tomorrow's forecast for real
 #
-# `forecast_tomorrow.py` makes a real forecast for tomorrow, the app's first screen. It refits exactly the model
+# `forecast_tomorrow.py` makes a real forecast for tomorrow, the app's first screen. The app runs it by itself in the
+# background whenever the saved forecast is for the wrong day or was made from partial readings. It refits exactly the model
 # above (and stops unless its 2025 forecasts match `data/predictions.csv`), then builds the same inputs from live
 # public data: AirNow's hourly readings, today's NOAA smoke map and NAQFC run, and Open-Meteo for CAMS and
 # tomorrow's weather. What's different from the test:
@@ -671,8 +672,9 @@ print(week[["date", "obs_pm25", "pred_persistence", "pred_noaa", "pred_cams", "p
 # - **AirNow, not EPA's archive.** We checked our AirNow averages against EPA's on 6 days of 2025: 35 of 36
 #   city-days within 1.5 µg/m³. The one bigger gap (Minneapolis, Jul 30: +3.3) is because AirNow has only the
 #   continuous monitors, and EPA also averages in filter samples that read lower that day.
-# - **Today is partial.** The forecast uses the hours reported so far, so it's best run after about 8 PM Central,
-#   once the 2-7 PM reading is in. The `status` column says when an input is partial or missing.
+# - **Today is partial.** The forecast uses the hours reported so far. Before about 8 PM Central the 2-7 PM reading
+#   isn't all in, so the app redoes a partial forecast every 30 minutes once someone opens it. The `status` column
+#   says when an input is partial or missing.
 
 # %% [markdown]
 # ## 11. Save the forecasts for the app
