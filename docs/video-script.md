@@ -26,7 +26,7 @@
 
 ## 4. Limits and next · 1:45–2:00
 **Screen:** the "Where it fails" tab.
-**Say:** "It still misses most days when smoke first arrives. Next, we'd warn when either SmokeCheck or CAMS crosses its line, and test it with a real athletic director."
+**Say:** "It still misses most days when smoke first arrives. Next, we'd add smoke mapped upwind of each city to catch it before it arrives, and test SmokeCheck with a real athletic director."
 
 ## Recording checklist
 - [ ] Under 2:00 on a timer
