@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SmokeCheck Finals</title>
+<!-- Keys: Right / Down / Space / PageDown = next, Left / Up / PageUp = back, Home / End. Open #5 to jump to slide 5.
+     Charts come from docs/finals/make_charts.py (data/predictions.csv + data/metrics.json). -->
+<style>
+  :root { --bg:#ffffff; --ink:#212529; --muted:#5c636a; --accent:#d9480f; --red:#c92a2a; --green:#2b8a3e; --line:#dee2e6; --card:#f8f9fa; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { height:100%; background:#111; overflow:hidden; font-family:-apple-system, "Helvetica Neue", Arial, sans-serif; color:var(--ink); }
+  #stage { position:absolute; left:50%; top:50%; width:1920px; height:1080px; transform-origin:0 0; }
+  .slide { position:absolute; inset:0; background:var(--bg); padding:90px 120px 80px; display:none; flex-direction:column; }
+  .slide.on { display:flex; }
+  h1 { font-size:96px; line-height:1.05; letter-spacing:-1px; }
+  h2 { font-size:68px; line-height:1.1; margin-bottom:44px; letter-spacing:-0.5px; }
+  p, li { font-size:42px; line-height:1.35; }
+  ul { list-style:none; } li { margin-bottom:26px; padding-left:44px; position:relative; }
+  li::before { content:""; position:absolute; left:0; top:22px; width:18px; height:18px; background:var(--accent); border-radius:50%; }
+  .big { font-size:150px; font-weight:800; line-height:1; }
+  .accent { color:var(--accent); } .red { color:var(--red); } .green { color:var(--green); } .muted { color:var(--muted); }
+  .who { position:absolute; top:40px; right:120px; font-size:26px; color:var(--muted); letter-spacing:1px; text-transform:uppercase; }
+  .num { position:absolute; bottom:34px; right:120px; font-size:24px; color:var(--muted); }
+  .foot { position:absolute; bottom:34px; left:120px; font-size:24px; color:var(--muted); }
+  .chart { width:100%; flex:1; min-height:0; object-fit:contain; }
+  .caption { font-size:34px; color:var(--muted); margin-top:18px; }
+  .row { display:flex; gap:60px; align-items:flex-start; }
+  .cards { display:flex; gap:40px; margin-top:10px; }
+  .card { flex:1; background:var(--card); border-radius:24px; padding:40px; border-top:14px solid var(--line); }
+  .card.warn { border-top-color:var(--red); } .card.ok { border-top-color:var(--green); }
+  .card h3 { font-size:40px; margin-bottom:18px; }
+  .card .call { font-size:44px; font-weight:800; margin-bottom:22px; }
+  .card p { font-size:34px; line-height:1.45; }
+  .tag { align-self:flex-start; display:inline-block; font-size:28px; padding:6px 18px; border-radius:30px; background:#fff4e6; color:var(--accent); font-weight:700; margin-bottom:26px; }
+  .switch { margin:auto; text-align:center; }
+  .switch .big { font-size:120px; }
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide">
+  <div class="who">Aiden</div>
+  <div class="tag">AI + Climate · Veritas AI Hackathon</div>
+  <h1>SmokeCheck:<br>practice outside, or move indoors?</h1>
+  <div class="row" style="margin-top:80px; gap:120px">
+    <div><div class="big red">83.7</div><p>Milwaukee, July 31, 2025<br>measured PM2.5 (µg/m³)</p></div>
+    <div><div class="big muted">13.4</div><p>NOAA's official forecast<br>the day before</p></div>
+  </div>
+  <p class="muted" style="margin-top:50px">EPA's 24-hour limit is 35.</p>
+  <div class="foot">Abhiddyu Chandiwal · Aiden Patel · a prototype, not health advice</div>
+</section>
+
+<section class="slide">
+  <div class="who">Aiden</div>
+  <h2>One decision, made the evening before</h2>
+  <ul>
+    <li>User: a Midwest high-school athletic director</li>
+    <li>Input: a city and tomorrow's date</li>
+    <li>Output: <b class="green">practice outside</b> or <b class="red">move indoors</b>,<br>with the PM2.5 forecast and an 80% likely range</li>
+    <li>Six cities: Chicago, Milwaukee, Madison, Minneapolis, Detroit, St. Louis</li>
+  </ul>
+</section>
+
+<section class="slide">
+  <div class="who">Aiden · live demo</div>
+  <div class="switch">
+    <div class="big accent">Switch to the app</div>
+    <p style="margin-top:50px">Milwaukee, Jul 31 &nbsp;→&nbsp; Chicago, Jul 31 &nbsp;→&nbsp; Chicago, Aug 1</p>
+    <p class="muted" style="margin-top:30px; font-size:34px">If the app fails: next slide, or play the recorded video</p>
+  </div>
+</section>
+
+<section class="slide">
+  <div class="who">Backup · only if the demo fails</div>
+  <h2>The demo, in three days</h2>
+  <div class="cards">
+    <div class="card warn"><h3>Milwaukee · Jul 31</h3><div class="call red">Move indoors</div>
+      <p>SmokeCheck <b>26.8</b> (line 24.5)<br>NOAA <b>13.4</b><br>Measured <b>83.7</b></p><p class="green" style="margin-top:18px"><b>Our catch</b></p></div>
+    <div class="card ok"><h3>Chicago · Jul 31</h3><div class="call green">Practice outside</div>
+      <p>SmokeCheck <b>13.7</b> (8.8–20.6)<br>NOAA <b>13.7</b><br>Measured <b>65.6</b></p><p class="red" style="margin-top:18px"><b>Our miss, and NOAA's</b></p></div>
+    <div class="card warn"><h3>Chicago · Aug 1</h3><div class="call red">Move indoors</div>
+      <p>SmokeCheck <b>54.0</b><br>NOAA <b>8.7</b><br>Measured <b>45.5</b></p><p class="green" style="margin-top:18px"><b>Smoke lingers: our catch</b></p></div>
+  </div>
+</section>
+
+<section class="slide">
+  <div class="who">Abhiddyu</div>
+  <h2>How it works</h2>
+  <ul>
+    <li>Inputs known the evening before: EPA monitors here and in 5 other cities, NOAA smoke maps, today's CAMS estimate, tomorrow's weather forecast</li>
+    <li>Model: average of Ridge regression (predicts the level) and gradient-boosted trees (predict the change from today)</li>
+    <li>Train Aug 2022 – Dec 2024 · test all of 2025, once, never shuffled</li>
+  </ul>
+  <p class="muted" style="font-size:32px; margin-top:auto">CAMS values are model estimates, not measurements.</p>
+</section>
+
+<section class="slide">
+  <div class="who">Abhiddyu</div>
+  <h2>19% lower error than NOAA's official forecast</h2>
+  <img class="chart" src="chart_error.svg" alt="Average error in 2025: SmokeCheck 2.58, NOAA 3.20, tomorrow equals today 3.40, raw CAMS 3.72">
+  <p class="caption">2025, six cities, 2,190 city-days. No warning line involved. *CAMS archive partly "sees" the day's smoke.</p>
+</section>
+
+<section class="slide">
+  <div class="who">Abhiddyu</div>
+  <h2>Warning cost: a missed bad day = 5 false alarms</h2>
+  <img class="chart" src="chart_cost.svg" alt="Warning cost at own line and at 35. SmokeCheck 106 and 135, NOAA 166 and 123, tomorrow equals today 134 and 126, raw CAMS 107 and 129">
+  <p class="caption">Every forecast runs low on smoke days, so each gets its own line from the same rule on 2022–24.<br>Best line picked in hindsight: SmokeCheck 102 · tomorrow = today 106 · NOAA 118.</p>
+</section>
+
+<section class="slide">
+  <div class="who">Abhiddyu</div>
+  <h2>Where it fails: smoke arriving overnight</h2>
+  <img class="chart" src="chart_chicago_week.svg" alt="Chicago, July 27 to August 2, 2025: measured, SmokeCheck and NOAA forecasts, with the 35 and 24.5 lines">
+  <p class="caption">Arrival days caught: <b class="red">6 of 21</b> · lingering days caught: <b class="green">12 of 14</b> (of 35 bad days in 2025)</p>
+</section>
+
+<section class="slide">
+  <div class="who">Abhiddyu</div>
+  <h2>What we learned: the cheapest line is noise</h2>
+  <ul>
+    <li>Old rule: take the single cheapest warning line on 2022–24</li>
+    <li>Adding one decimal place to the readings (at most 0.005 µg/m³) moved it from <b>24</b> to <b>29.5</b></li>
+    <li>New rule, written down before we ran it: 200 copies of 2022–24 drawn in whole weeks, cheapest line on each, take the median</li>
+    <li>Same rule for every forecast. Ours: <b class="accent">24.5</b></li>
+  </ul>
+</section>
+
+<section class="slide">
+  <div class="who">Aiden</div>
+  <h2>Why it matters, and what's next</h2>
+  <p style="font-size:46px; line-height:1.4; margin-bottom:50px">Against NOAA's official day-ahead forecast, SmokeCheck's error is <b class="accent">19% lower</b>, and its warnings cost <b class="accent">106</b> against NOAA's <b>123</b> at the EPA's 35 line.</p>
+  <ul>
+    <li>Next: more smoky cities (e.g. Duluth) to fix arrival days</li>
+    <li>Forecast practice hours, 3–6 PM, and test with a real athletic director</li>
+  </ul>
+  <div class="foot">A prototype, not health advice · Thank you</div>
+</section>
+
+<section class="slide">
+  <div class="who">During Q&amp;A</div>
+  <h2>Sources</h2>
+  <ul style="font-size:34px">
+    <li style="font-size:34px">Data: EPA AirData daily PM2.5 · NOAA NAQFC day-ahead forecast (AWS Open Data) · NOAA HMS smoke maps · CAMS via Open-Meteo Air Quality API · Open-Meteo Historical Forecast and Previous Runs APIs</li>
+    <li style="font-size:34px">Libraries: scikit-learn 1.9.1, pandas, NumPy, matplotlib, pyshp, eccodes, jupytext, Gradio, Plotly</li>
+    <li style="font-size:34px">Starting point: Veritas AI suggested project 4.3.2</li>
+    <li style="font-size:34px">AI tools: Claude (Anthropic), through Claude Code, wrote most of the code and drafted the write-up; we chose the project and the experiments, and read all the code</li>
+  </ul>
+</section>
+
+</div>
+<script>
+  const slides = [...document.querySelectorAll(".slide")];
+  slides.forEach((s, i) => s.insertAdjacentHTML("beforeend", `<div class="num">${i + 1} / ${slides.length}</div>`));
+  let cur = Math.min(Math.max(parseInt(location.hash.slice(1)) || 1, 1), slides.length) - 1;
+  function show(i) {
+    cur = Math.min(Math.max(i, 0), slides.length - 1);
+    slides.forEach((s, j) => s.classList.toggle("on", j === cur));
+    history.replaceState(null, "", "#" + (cur + 1));
+  }
+  function fit() {
+    const k = Math.min(innerWidth / 1920, innerHeight / 1080);
+    document.getElementById("stage").style.transform = `scale(${k}) translate(-50%, -50%)`;
+  }
+  addEventListener("keydown", e => {
+    if (["ArrowRight", "ArrowDown", "PageDown", " "].includes(e.key)) { e.preventDefault(); show(cur + 1); }
+    else if (["ArrowLeft", "ArrowUp", "PageUp"].includes(e.key)) { e.preventDefault(); show(cur - 1); }
+    else if (e.key === "Home") show(0);
+    else if (e.key === "End") show(slides.length - 1);
+  });
+  addEventListener("click", () => show(cur + 1));
+  addEventListener("resize", fit);
+  fit(); show(cur);
+</script>
+</body>
+</html>
