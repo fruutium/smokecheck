@@ -10,15 +10,17 @@ import plotly.express as px
 DATA = Path(__file__).parent.parent / "data"
 DEFAULT_LIMIT = 35  # µg/m³ daily mean; only used when metrics.json does not say otherwise
 START_CITY, START_DATE = "Milwaukee", "2025-07-31"  # the headline smoke day
-# Readable names for the forecast columns, SmokeCheck first. Any other pred_* column shows under its own name.
-NAMES = {"pred_model": "SmokeCheck", "pred_cams": "Raw CAMS estimate",
+# Readable names for the forecast columns, in table order. Any other pred_* column shows under its own name.
+NAMES = {"pred_model": "SmokeCheck", "pred_noaa": "NOAA day-ahead forecast (NAQFC)",
          "pred_persistence": "Persistence (yesterday's measurement)",
-         "pred_climatology": "Climatology (usual for this city and month)"}
+         "pred_climatology": "Climatology (usual for this city and month)",
+         "pred_cams": "Raw CAMS estimate (optimistic)"}
+CAMS_NOTE = ("Raw CAMS is optimistic: Open-Meteo keeps no true day-ahead CAMS archive, "
+             "so its value partly sees the day's smoke.")
 
 OK = "✅ OK to practice outside"
 INDOORS = "🚫 Move practice indoors"
 NOT_READY = "⏳ SmokeCheck forecast not ready yet"
-SHOWN_ELSEWHERE = ["pred_model", "pred_cams", "pred_lo", "pred_hi"]  # not repeated in the baselines line
 COLOR = {OK: "#1b7a3e", INDOORS: "#b42318", NOT_READY: "#5b6470"}
 SYMBOL = {OK: "circle", INDOORS: "square", NOT_READY: "circle-open"}  # shape too, not color alone
 FOOTER = "Open-Meteo air-quality values are model estimates, not measurements. Prototype, not health advice."
@@ -119,11 +121,16 @@ def card(rows, city, date, metrics):
                f"days. We set that cut-off on 2022–2024 so one missed bad day costs as much as "
                f"{metrics['cost_of_a_miss']:g} false alarms.")
 
+    # The left box compares with NOAA's official forecast; files without it fall back to raw CAMS.
+    compare = "pred_noaa" if "pred_noaa" in rows else "pred_cams"
+    compare_label = "NOAA's official forecast said" if compare == "pred_noaa" else "Raw CAMS estimate said"
+    other = row.get(compare)
+
     # Every other pred_* column in the file is a baseline, shown smaller under the three numbers.
-    others = [c for c in rows.columns if c.startswith("pred_") and c not in SHOWN_ELSEWHERE]
+    shown_elsewhere = ["pred_model", compare, "pred_lo", "pred_hi"]
+    others = [c for c in rows.columns if c.startswith("pred_") and c not in shown_elsewhere]
     baselines = " · ".join(f"{NAMES.get(c, c)} said {number(row.get(c), 'nothing')} "
                            f"{call_words(row.get(c), cutoff(metrics, c))}" for c in others)
-    cams = row.get("pred_cams")
     measured = row.get("obs_pm25")
 
     return f"""
@@ -134,8 +141,8 @@ def card(rows, city, date, metrics):
       <div class="how">{how}</div>
     </div>
     <div class="numbers">
-      <div><span>Raw CAMS estimate said</span><b>{number(cams, "no estimate")}</b>
-        <i>{call_words(cams, cutoff(metrics, "pred_cams"))}</i></div>
+      <div><span>{compare_label}</span><b>{number(other, "no forecast")}</b>
+        <i>{call_words(other, cutoff(metrics, compare))}</i></div>
       <div><span>SmokeCheck said</span><b>{number(pred, "not ready yet")}</b><i>{call_words(pred, cut)}</i></div>
       <div><span>Monitors measured</span><b>{number(measured, "no measurement")}</b>
         <i>{bad_day_words(measured, limit)}</i></div>
@@ -254,6 +261,8 @@ with gr.Blocks(title="SmokeCheck") as demo:
             gr.Markdown(f"### {title}")
             table = scoreboard(METRICS[key]) if group_name is None else grouped_scoreboard(METRICS[key], group_name)
             gr.Dataframe(table, max_height=900)
+            if key == "overall" and "pred_cams" in METRICS[key]:
+                gr.Markdown(CAMS_NOTE)
         if not shown:
             gr.Markdown("Results appear here once the model is evaluated.")
 
@@ -265,7 +274,7 @@ with gr.Blocks(title="SmokeCheck") as demo:
             gr.Markdown("The 50 days of 2025 where SmokeCheck was furthest off, largest first (µg/m³). Smoke plume = NOAA "
                         "satellite maps show smoke over the city. "
                         "**Smoke arrival days are the weak spot:** yesterday's reading was fine and today's is bad. "
-                        "That is when the raw CAMS estimate, which sees the smoke coming, does better. "
+                        "NOAA's official forecast misses these days too. "
                         "The opposite happens too: the day after the smoke clears, SmokeCheck can still warn.")
             # Numbers get the same one-decimal format as the card; text columns are left alone.
             gr.Dataframe(misses.head(50).map(lambda v: f"{v:.1f}" if isinstance(v, float) else v), max_height=900)
