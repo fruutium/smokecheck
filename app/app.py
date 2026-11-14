@@ -119,9 +119,8 @@ def card(rows, city, date, metrics):
     if "cost_of_a_miss" in metrics and cut != limit:
         # The cut-off was set on the training years (2022–2024), never on 2025; 200 resamples per the notebook.
         how = (f"SmokeCheck warns above {cut:g} µg/m³, not {limit:g}, because its forecasts run low on smoke "
-               f"days. We set that line on 2022–2024 so one missed bad day costs as much as "
-               f"{metrics['cost_of_a_miss']:g} false alarms, and checked it holds across 200 resampled "
-               f"versions of those years.")
+               f"days. The line is the middle of the cheapest lines across 200 resampled copies of 2022–2024, "
+               f"counting one missed bad day as {metrics['cost_of_a_miss']:g} false alarms.")
 
     # The left box compares with NOAA's official forecast; files without it fall back to raw CAMS.
     compare = "pred_noaa" if "pred_noaa" in rows else "pred_cams"
@@ -259,7 +258,8 @@ with gr.Blocks(title="SmokeCheck") as demo:
         limit = bad_day_limit(METRICS)
         gr.Markdown(f"A **bad day** is one the monitors measured above {limit:g} µg/m³. **Caught** = a bad day "
                     f"the forecaster warned about. **False alarm** = it warned and the day was not bad. "
-                    f"Test period: all of 2025, never used for training or for choosing cut-offs.")
+                    f"Test period: all of 2025, never used for training. Cut-offs come from 2022–2024; the write-up's "
+                    f"honesty notes list what we saw of 2025 before fixing that rule.")
         sections = [("overall", "All of 2025", None), ("by_smoke", "Smoke-plume days vs clean days", "Day type"),
                     ("by_city", "By city", "City"),
                     ("training_years_out_of_fold", "Training years (out-of-fold)", None)]

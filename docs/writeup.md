@@ -31,16 +31,16 @@ We started from suggested project 4.3.2 (next-day air quality forecast). Instead
 | Persistence (tomorrow = today) | 3.40 | 37 | 12 | 19 | 134 |
 | Raw CAMS (optimistic*) | 3.72 | 30 | 17 | 17 | 107 |
 
-**Takeaway:** SmokeCheck's average error is 19% lower than NOAA's official forecast (2.58 vs 3.20). Its warnings cost 106 against NOAA's 123 at the plain 35 line. With the best line picked in hindsight for everyone, SmokeCheck costs 102, NOAA 118 and persistence 106, so on warnings we clearly beat NOAA but only tie "tomorrow = today". *Raw CAMS does best in hindsight (100), but Open-Meteo keeps no true day-ahead CAMS archive, so its value partly "sees" the day's smoke.
+**Takeaway:** SmokeCheck's average error is 19% lower than NOAA's forecast (2.58 vs 3.20). Its warnings cost 106 against NOAA's 123 at the plain 35 line. With the best line picked in hindsight, SmokeCheck costs 102, NOAA 118 and persistence 106, so we beat NOAA at every line up to 26.5 but only tie "tomorrow = today". *Raw CAMS does best in hindsight (100), but Open-Meteo keeps no true day-ahead CAMS archive, so its value partly "sees" the day's smoke.
 
 **Where it fails.** When smoke *arrives* overnight, SmokeCheck caught only 6 of 21 days. On July 31 in Chicago it said 13.7 (likely range 8.8–20.6), NOAA said 13.7, and the air measured 65.6. Our model leans on today's readings, which are still clean, and its range held the real value on 79.6% of 2025 days but only 37% of bad days. When smoke *lingers*, it caught 12 of 14: on August 1 in Chicago, NOAA said 8.7, SmokeCheck 54.0, and the air measured 45.5.
 
-**Tried and dropped:** trees predicting the PM2.5 level (1 of 38 bad training days caught); smoke mapped 300–900 km upwind (no change in error); and training on 2018–2022 too, which lowered the error on training years but raised the warning cost, since those years add only 3 smoke days.
+**Tried and dropped:** trees predicting the PM2.5 level (1 of 38 bad training days caught); smoke mapped 300–900 km upwind (no change in error); and training on 2018–2022 too, which lowered the error on training years but raised the warning cost, so we never scored it on 2025.
 
 **Honesty notes:** before fixing our process we saw some 2025 results: the baselines at a plain 35 line, one scratch run of model variants, and our first warning rule (the single cheapest line on training) at both 24 and 29.5, after a 0.005 µg/m³ rounding change made it jump. We wrote the resampled rule down before computing it. The range tried 4 layouts on 2025 (all 80–81%). We picked the cities knowing their smoky-day counts, 2025 included.
 
 ## What we'd do next
-- Add more cities that get smoke (for example Duluth), since more years added only 3 smoke days.
+- Add more cities that get smoke (for example Duluth), since more years added only 3 bad smoke days.
 - Forecast practice hours (3–6 PM) and test it with a real athletic director.
 
 ## Sources

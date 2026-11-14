@@ -82,7 +82,7 @@ if (app.DATA / "predictions.csv").exists() and (app.DATA / "metrics.json").exist
     assert app.INDOORS in html and "<b>26.8</b>" in html and "→ warn (cut-off 24.5)" in html and "<b>83.7</b>" in html
     assert "<span>NOAA's official forecast said</span><b>13.4</b>" in html and "→ no warning (cut-off 52.5)" in html
     assert "a bad day" in html
-    assert (f"not {metrics['threshold']:g}" in html and f"as much as {metrics['cost_of_a_miss']:g} false alarms" in html)
+    assert (f"not {metrics['threshold']:g}" in html and f"missed bad day as {metrics['cost_of_a_miss']:g} false alarms" in html)
     assert f"warns above {metrics['warn_at']['pred_model']:g} µg/m³, not" in html
 
     # Chicago 2025-07-31: SmokeCheck 13.7 and NOAA 13.7 both say outside; measured 65.6.
