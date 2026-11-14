@@ -1,0 +1,212 @@
+{
+ "threshold": 35,
+ "test_period": [
+  "2025-01-01",
+  "2025-12-31"
+ ],
+ "overall": {
+  "pred_persistence": {
+   "mae": 3.4,
+   "days": 2190,
+   "bad_days": 35,
+   "caught": 14,
+   "missed": 21,
+   "false_alarms": 21,
+   "recall": 0.4
+  },
+  "pred_climatology": {
+   "mae": 4.33,
+   "days": 2190,
+   "bad_days": 35,
+   "caught": 0,
+   "missed": 35,
+   "false_alarms": 0,
+   "recall": 0.0
+  },
+  "pred_cams": {
+   "mae": 3.72,
+   "days": 2190,
+   "bad_days": 35,
+   "caught": 10,
+   "missed": 25,
+   "false_alarms": 4,
+   "recall": 0.286
+  }
+ },
+ "by_city": {
+  "Chicago": {
+   "pred_persistence": {
+    "mae": 3.28,
+    "days": 365,
+    "bad_days": 3,
+    "caught": 1,
+    "missed": 2,
+    "false_alarms": 2,
+    "recall": 0.333
+   },
+   "pred_climatology": {
+    "mae": 4.22,
+    "days": 365,
+    "bad_days": 3,
+    "caught": 0,
+    "missed": 3,
+    "false_alarms": 0,
+    "recall": 0.0
+   },
+   "pred_cams": {
+    "mae": 3.95,
+    "days": 365,
+    "bad_days": 3,
+    "caught": 1,
+    "missed": 2,
+    "false_alarms": 1,
+    "recall": 0.333
+   }
+  },
+  "Detroit": {
+   "pred_persistence": {
+    "mae": 3.6,
+    "days": 365,
+    "bad_days": 6,
+    "caught": 1,
+    "missed": 5,
+    "false_alarms": 5,
+    "recall": 0.167
+   },
+   "pred_climatology": {
+    "mae": 4.66,
+    "days": 365,
+    "bad_days": 6,
+    "caught": 0,
+    "missed": 6,
+    "false_alarms": 0,
+    "recall": 0.0
+   },
+   "pred_cams": {
+    "mae": 3.27,
+    "days": 365,
+    "bad_days": 6,
+    "caught": 3,
+    "missed": 3,
+    "false_alarms": 0,
+    "recall": 0.5
+   }
+  },
+  "Madison": {
+   "pred_persistence": {
+    "mae": 3.3,
+    "days": 365,
+    "bad_days": 6,
+    "caught": 2,
+    "missed": 4,
+    "false_alarms": 4,
+    "recall": 0.333
+   },
+   "pred_climatology": {
+    "mae": 4.26,
+    "days": 365,
+    "bad_days": 6,
+    "caught": 0,
+    "missed": 6,
+    "false_alarms": 0,
+    "recall": 0.0
+   },
+   "pred_cams": {
+    "mae": 3.35,
+    "days": 365,
+    "bad_days": 6,
+    "caught": 0,
+    "missed": 6,
+    "false_alarms": 0,
+    "recall": 0.0
+   }
+  },
+  "Milwaukee": {
+   "pred_persistence": {
+    "mae": 3.47,
+    "days": 365,
+    "bad_days": 9,
+    "caught": 6,
+    "missed": 3,
+    "false_alarms": 3,
+    "recall": 0.667
+   },
+   "pred_climatology": {
+    "mae": 4.68,
+    "days": 365,
+    "bad_days": 9,
+    "caught": 0,
+    "missed": 9,
+    "false_alarms": 0,
+    "recall": 0.0
+   },
+   "pred_cams": {
+    "mae": 3.27,
+    "days": 365,
+    "bad_days": 9,
+    "caught": 3,
+    "missed": 6,
+    "false_alarms": 0,
+    "recall": 0.333
+   }
+  },
+  "Minneapolis": {
+   "pred_persistence": {
+    "mae": 3.95,
+    "days": 365,
+    "bad_days": 9,
+    "caught": 4,
+    "missed": 5,
+    "false_alarms": 5,
+    "recall": 0.444
+   },
+   "pred_climatology": {
+    "mae": 4.88,
+    "days": 365,
+    "bad_days": 9,
+    "caught": 0,
+    "missed": 9,
+    "false_alarms": 0,
+    "recall": 0.0
+   },
+   "pred_cams": {
+    "mae": 4.58,
+    "days": 365,
+    "bad_days": 9,
+    "caught": 3,
+    "missed": 6,
+    "false_alarms": 2,
+    "recall": 0.333
+   }
+  },
+  "St. Louis": {
+   "pred_persistence": {
+    "mae": 2.81,
+    "days": 365,
+    "bad_days": 2,
+    "caught": 0,
+    "missed": 2,
+    "false_alarms": 2,
+    "recall": 0.0
+   },
+   "pred_climatology": {
+    "mae": 3.27,
+    "days": 365,
+    "bad_days": 2,
+    "caught": 0,
+    "missed": 2,
+    "false_alarms": 0,
+    "recall": 0.0
+   },
+   "pred_cams": {
+    "mae": 3.86,
+    "days": 365,
+    "bad_days": 2,
+    "caught": 0,
+    "missed": 2,
+    "false_alarms": 1,
+    "recall": 0.0
+   }
+  }
+ }
+}
