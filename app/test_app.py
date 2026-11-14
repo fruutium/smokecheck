@@ -33,7 +33,7 @@ def check_no_forecast_yet(rows, metrics):
     assert len(rows) == 6 * 365
     assert rows["pred_model"].isna().all()
     html = app.card(rows, "Chicago", "2025-07-31", metrics)
-    assert "34.3" in html and "<b>65.7</b>" in html  # CAMS 34.28 (box or baselines line), measured 65.65
+    assert "34.3" in html and "<b>65.6</b>" in html  # CAMS 34.28 (box or baselines line), measured 65.648
     assert app.NOT_READY in html and "<b>not ready yet</b>" in html
     assert app.OK not in html and app.INDOORS not in html
     assert app.worst_misses(rows, metrics).empty
@@ -76,25 +76,32 @@ if (app.DATA / "predictions.csv").exists() and (app.DATA / "metrics.json").exist
     rows, metrics = app.load_rows(), app.METRICS
     assert app.cutoff(metrics, "pred_model") == metrics["warn_at"]["pred_model"]
 
-    # Milwaukee 2025-07-31: SmokeCheck 27.6 is above its cut-off of 24, so it warns; NOAA 13.4 does not.
+    # Milwaukee 2025-07-31: SmokeCheck 26.8 is above its cut-off of 24.5, so it warns; NOAA 13.4 does not.
     html = app.card(rows, "Milwaukee", "2025-07-31", metrics)
-    assert app.INDOORS in html and "<b>27.6</b>" in html and "<b>83.7</b>" in html
-    assert "<span>NOAA's official forecast said</span><b>13.4</b>" in html and "→ no warning (cut-off 45)" in html
+    assert app.INDOORS in html and "<b>26.8</b>" in html and "→ warn (cut-off 24.5)" in html and "<b>83.7</b>" in html
+    assert "<span>NOAA's official forecast said</span><b>13.4</b>" in html and "→ no warning (cut-off 52.5)" in html
     assert "a bad day" in html
     assert (f"not {metrics['threshold']:g}" in html and f"as much as {metrics['cost_of_a_miss']:g} false alarms" in html)
+    assert f"warns above {metrics['warn_at']['pred_model']:g} µg/m³, not" in html
 
-    # Chicago 2025-07-31: SmokeCheck 13.9 and NOAA 13.7 both say outside; measured 65.7.
+    # Chicago 2025-07-31: SmokeCheck 13.7 and NOAA 13.7 both say outside; measured 65.6.
     # Raw CAMS 34.3 warns, but it sits in the baselines line, marked optimistic.
     html = app.card(rows, "Chicago", "2025-07-31", metrics)
-    assert app.OK in html and "<b>13.9</b>" in html and "<b>65.7</b>" in html
+    assert app.OK in html and "<b>65.6</b>" in html
+    assert "<span>SmokeCheck said</span><b>13.7</b>" in html
+    assert "Likely between 8.8 and 20.6 (80% range)" in html  # shown only, the call stays green
     assert "<span>NOAA's official forecast said</span><b>13.7</b>" in html
-    assert "Raw CAMS estimate (optimistic) said 34.3 → warn (cut-off 29.5)" in html
+    assert "Raw CAMS estimate (optimistic) said 34.3 → warn (cut-off 30)" in html
     assert "Persistence (yesterday's measurement) said 12.4 → no warning (cut-off 37)" in html
 
-    # Chicago 2025-08-01: SmokeCheck 54.8 warns, NOAA 8.7 does not.
+    # Chicago 2025-08-01: SmokeCheck 54.0 warns, NOAA 8.7 does not.
     html = app.card(rows, "Chicago", "2025-08-01", metrics)
-    assert app.INDOORS in html and "<b>54.8</b>" in html
-    assert "<span>NOAA's official forecast said</span><b>8.7</b>" in html and "→ no warning (cut-off 45)" in html
+    assert app.INDOORS in html and "<b>54.0</b>" in html
+    assert "<span>NOAA's official forecast said</span><b>8.7</b>" in html and "→ no warning (cut-off 52.5)" in html
+
+    # Without range_lo / range_hi the card shows no range at all (a COPY with the columns dropped).
+    no_range = rows.drop(columns=["range_lo", "range_hi"])
+    assert "Likely between" not in app.card(no_range, "Chicago", "2025-07-31", metrics)
 
     # The map colours follow SmokeCheck's cut-off: on 2025-07-31 some cities warn and some do not.
     fig = app.city_map(rows, "2025-07-31", metrics)

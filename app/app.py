@@ -37,6 +37,7 @@ CSS = """
 .numbers span { display: block; color: var(--neutral-600); }
 .numbers b { font-size: 2rem; }
 .numbers i { display: block; font-style: normal; font-weight: 600; }
+.numbers small { display: block; color: var(--neutral-600); font-size: 0.95rem; margin-top: 2px; }
 .small { color: var(--neutral-600); font-size: 0.9rem; margin-top: 10px; }
 """
 FONT = [gr.themes.GoogleFont("Barlow", weights=(400, 600, 800)), "system-ui", "sans-serif"]
@@ -112,14 +113,13 @@ def card(rows, city, date, metrics):
         why = "No call without a forecast."
     else:
         why = f"SmokeCheck forecasts {pred:.1f} µg/m³ for this day."
-        if pd.notna(row.get("pred_lo")) and pd.notna(row.get("pred_hi")):
-            why += f" Likely range {row['pred_lo']:.1f} to {row['pred_hi']:.1f}."
     how = f"SmokeCheck warns above {cut:g} µg/m³."
     if "cost_of_a_miss" in metrics and cut != limit:
-        # The cut-off was set on the training years (2022–2024 in predictions.csv), never on 2025.
+        # The cut-off was set on the training years (2022–2024), never on 2025; 200 resamples per the notebook.
         how = (f"SmokeCheck warns above {cut:g} µg/m³, not {limit:g}, because its forecasts run low on smoke "
-               f"days. We set that cut-off on 2022–2024 so one missed bad day costs as much as "
-               f"{metrics['cost_of_a_miss']:g} false alarms.")
+               f"days. We set that line on 2022–2024 so one missed bad day costs as much as "
+               f"{metrics['cost_of_a_miss']:g} false alarms, and checked it holds across 200 resampled "
+               f"versions of those years.")
 
     # The left box compares with NOAA's official forecast; files without it fall back to raw CAMS.
     compare = "pred_noaa" if "pred_noaa" in rows else "pred_cams"
@@ -127,11 +127,15 @@ def card(rows, city, date, metrics):
     other = row.get(compare)
 
     # Every other pred_* column in the file is a baseline, shown smaller under the three numbers.
-    shown_elsewhere = ["pred_model", compare, "pred_lo", "pred_hi"]
+    shown_elsewhere = ["pred_model", compare]
     others = [c for c in rows.columns if c.startswith("pred_") and c not in shown_elsewhere]
     baselines = " · ".join(f"{NAMES.get(c, c)} said {number(row.get(c), 'nothing')} "
                            f"{call_words(row.get(c), cutoff(metrics, c))}" for c in others)
     measured = row.get("obs_pm25")
+    # The 80% likely range is shown only; it never changes the call.
+    likely = ""
+    if pd.notna(row.get("range_lo")) and pd.notna(row.get("range_hi")):
+        likely = f"Likely between {row['range_lo']:.1f} and {row['range_hi']:.1f} (80% range)"
 
     return f"""
     <div class="verdict" style="background:{COLOR[call]}">
@@ -143,7 +147,8 @@ def card(rows, city, date, metrics):
     <div class="numbers">
       <div><span>{compare_label}</span><b>{number(other, "no forecast")}</b>
         <i>{call_words(other, cutoff(metrics, compare))}</i></div>
-      <div><span>SmokeCheck said</span><b>{number(pred, "not ready yet")}</b><i>{call_words(pred, cut)}</i></div>
+      <div><span>SmokeCheck said</span><b>{number(pred, "not ready yet")}</b><i>{call_words(pred, cut)}</i>
+        <small>{likely}</small></div>
       <div><span>Monitors measured</span><b>{number(measured, "no measurement")}</b>
         <i>{bad_day_words(measured, limit)}</i></div>
     </div>
@@ -263,6 +268,11 @@ with gr.Blocks(title="SmokeCheck") as demo:
             gr.Dataframe(table, max_height=900)
             if key == "overall" and "pred_cams" in METRICS[key]:
                 gr.Markdown(CAMS_NOTE)
+            coverage = METRICS.get("forecast_range", {}).get("coverage_test", {})
+            if key == "overall" and "all" in coverage and "bad_days" in coverage:
+                gr.Markdown(f"SmokeCheck's 80% range held the real value on {coverage['all']['inside']:.1%} of "
+                            f"2025 days, but only {coverage['bad_days']['inside']:.0%} of bad days: "
+                            f"smoke arrivals land above it.")
         if not shown:
             gr.Markdown("Results appear here once the model is evaluated.")
 
