@@ -46,9 +46,9 @@ Open the Space link in a private (incognito) window:
 
 1. The status badge says **Running**. If it says build or runtime error, open the **Logs** tab first; a
    Python-version or pip error usually means the YAML header was changed.
-2. The default view is **Milwaukee, Thursday, July 31, 2025**: red "Move practice indoors", SmokeCheck 26.8
-   (cut-off 24.5), NOAA 13.4 (no warning, cut-off 52.5), measured 83.7 (a bad day).
-3. Change the city to Chicago and step the day slider once: Friday, August 1, 2025, SmokeCheck 54.0 warns.
+2. The default view is **Minneapolis, Thursday, July 31, 2025**: red "Move practice indoors", SmokeCheck 41.3
+   (cut-off 32), NOAA 18.7 (no warning, cut-off 52.5), measured 69.1 (a bad day).
+3. Change the city to Chicago and step the day slider once: Friday, August 1, 2025, SmokeCheck 51.8 warns.
 4. The map draws the six city dots.
 5. "Does it work?" and "Where it fails" both show tables.
 6. The footer reads "Open-Meteo air-quality values are model estimates, not measurements. Prototype, not

@@ -11,7 +11,7 @@ import plotly.express as px
 HERE = Path(__file__).parent
 DATA = HERE / "data" if (HERE / "data").exists() else HERE.parent / "data"
 DEFAULT_LIMIT = 35  # µg/m³ daily mean; only used when metrics.json does not say otherwise
-START_CITY, START_DATE = "Milwaukee", "2025-07-31"  # the headline smoke day
+START_CITY, START_DATE = "Minneapolis", "2025-07-31"  # the headline smoke day
 # Readable names for the forecast columns, in table order. Any other pred_* column shows under its own name.
 NAMES = {"pred_model": "SmokeCheck", "pred_noaa": "NOAA day-ahead forecast (NAQFC)",
          "pred_persistence": "Persistence (yesterday's measurement)",
@@ -118,12 +118,12 @@ def card(rows, city, date, metrics):
         why = f"SmokeCheck forecasts {pred:.1f} µg/m³ for this day."
     how = f"SmokeCheck warns above {cut:g} µg/m³."
     if "cost_of_a_miss" in metrics and cut != limit:
-        # The cut-off was set on the training years (2022–2024); "200" and "24 to 29" come from the notebook.
+        # The cut-off was set on the training years (2022–2024); "200" and "27 to 32" come from the notebook.
         how = (f"SmokeCheck warns above {cut:g} µg/m³, not {limit:g}, because its forecasts run low on smoke "
                f"days. The line comes from a rule we fixed before computing it (the middle of the cheapest lines "
                f"over 200 resampled copies of 2022–2024, counting one missed bad day as "
                f"{metrics['cost_of_a_miss']:g} false alarms). Those years can't pin it down exactly: anywhere "
-               f"from about 24 to 29 is defensible.")
+               f"from about 27 to 32 is defensible.")
 
     # The left box compares with NOAA's official forecast; files without it fall back to raw CAMS.
     compare = "pred_noaa" if "pred_noaa" in rows else "pred_cams"
@@ -231,6 +231,20 @@ def grouped_scoreboard(section, group_name):
     return pd.concat(tables)
 
 
+def arrival_note(rows, metrics):
+    """Smoke arrival days (yesterday's reading was fine, today's is bad) and how many each forecast warned on."""
+    if "pred_persistence" not in rows:
+        return "**Smoke arrival days are the weak spot:** yesterday's reading was fine and today's is bad. "
+    limit = bad_day_limit(metrics)
+    arrivals = rows[(rows["pred_persistence"] <= limit) & (rows["obs_pm25"] > limit)]
+    warned = (arrivals["pred_model"] > cutoff(metrics, "pred_model")).sum()
+    note = (f"**SmokeCheck misses the days smoke first arrives** (yesterday's reading was fine, today's is bad): "
+            f"it warned on {warned} of {len(arrivals)} in 2025")
+    if "pred_noaa" in rows:
+        note += f", NOAA's official forecast on {(arrivals['pred_noaa'] > cutoff(metrics, 'pred_noaa')).sum()}"
+    return note + ". "
+
+
 def worst_misses(rows, metrics):
     scored = rows.dropna(subset=["pred_model", "obs_pm25"]).copy()
     scored["miss"] = (scored["pred_model"] - scored["obs_pm25"]).abs()
@@ -314,8 +328,7 @@ with gr.Blocks(title="SmokeCheck") as demo:
         else:
             gr.Markdown("The 50 days of 2025 where SmokeCheck was furthest off, largest first (µg/m³). Smoke plume = NOAA "
                         "satellite maps show smoke over the city. "
-                        "**Smoke arrival days are the weak spot:** yesterday's reading was fine and today's is bad. "
-                        "NOAA's official forecast misses these days too. "
+                        + arrival_note(ROWS, METRICS) +
                         "The opposite happens too: the day after the smoke clears, SmokeCheck can still warn.")
             # Numbers get the same one-decimal format as the card; text columns are left alone.
             gr.Dataframe(misses.head(50).map(lambda v: f"{v:.1f}" if isinstance(v, float) else v), max_height=900)
