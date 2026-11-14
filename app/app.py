@@ -7,7 +7,9 @@ import gradio as gr
 import pandas as pd
 import plotly.express as px
 
-DATA = Path(__file__).parent.parent / "data"
+# In the repo the data is in ../data; in the Hugging Face Space it sits next to app.py, in ./data.
+HERE = Path(__file__).parent
+DATA = HERE / "data" if (HERE / "data").exists() else HERE.parent / "data"
 DEFAULT_LIMIT = 35  # µg/m³ daily mean; only used when metrics.json does not say otherwise
 START_CITY, START_DATE = "Milwaukee", "2025-07-31"  # the headline smoke day
 # Readable names for the forecast columns, in table order. Any other pred_* column shows under its own name.
@@ -117,9 +119,8 @@ def card(rows, city, date, metrics):
     if "cost_of_a_miss" in metrics and cut != limit:
         # The cut-off was set on the training years (2022–2024), never on 2025; 200 resamples per the notebook.
         how = (f"SmokeCheck warns above {cut:g} µg/m³, not {limit:g}, because its forecasts run low on smoke "
-               f"days. We set that line on 2022–2024 so one missed bad day costs as much as "
-               f"{metrics['cost_of_a_miss']:g} false alarms, and checked it holds across 200 resampled "
-               f"versions of those years.")
+               f"days. The line is the middle of the cheapest lines across 200 resampled copies of 2022–2024, "
+               f"counting one missed bad day as {metrics['cost_of_a_miss']:g} false alarms.")
 
     # The left box compares with NOAA's official forecast; files without it fall back to raw CAMS.
     compare = "pred_noaa" if "pred_noaa" in rows else "pred_cams"
@@ -257,7 +258,8 @@ with gr.Blocks(title="SmokeCheck") as demo:
         limit = bad_day_limit(METRICS)
         gr.Markdown(f"A **bad day** is one the monitors measured above {limit:g} µg/m³. **Caught** = a bad day "
                     f"the forecaster warned about. **False alarm** = it warned and the day was not bad. "
-                    f"Test period: all of 2025, never used for training or for choosing cut-offs.")
+                    f"Test period: all of 2025, never used for training. Cut-offs come from 2022–2024; the write-up's "
+                    f"honesty notes list what we saw of 2025 before fixing that rule.")
         sections = [("overall", "All of 2025", None), ("by_smoke", "Smoke-plume days vs clean days", "Day type"),
                     ("by_city", "By city", "City"),
                     ("training_years_out_of_fold", "Training years (out-of-fold)", None)]

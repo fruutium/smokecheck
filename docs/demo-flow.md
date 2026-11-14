@@ -41,5 +41,5 @@ Footer on every tab: "Open-Meteo air-quality values are model estimates, not mea
 - A "reveal what happened" button: the measured value is simply always shown.
 
 ## Decided
-- **Two verdict levels** (Aiden, Nov 13): "OK to practice outside" / "Move practice indoors". Originally split at 35; since Nov 14 each forecast uses its own warning line from `warn_at` (SmokeCheck 24), and 35 only defines a bad day.
+- **Two verdict levels** (Aiden, Nov 13): "OK to practice outside" / "Move practice indoors". Originally split at 35; since Nov 14 each forecast uses its own warning line from `warn_at` (SmokeCheck 24.5), and 35 only defines a bad day.
 - **Two colors to match:** green at or below the warning line, red above it, on the verdict card and the map dots.
