@@ -12,14 +12,14 @@
 **Say:** "When wildfire smoke drifts over the Midwest, a high-school athletic director has to decide the day before whether practice stays outside. The forecasts they can look up come from big global models, and those can miss how bad one city gets."
 
 ## 2. The demo · 0:15–1:15
-**Screen:** the app, opened on Chicago, [headline smoke day].
-**Say:** "This is SmokeCheck. Pick a city and a day. Here's Chicago on [date], a day our model never saw in training."
+**Screen:** the app, opened on Chicago, Thursday July 31, 2025.
+**Say:** "This is SmokeCheck. Pick a city and a day. Here's Chicago on July 31st, 2025, a day our model never saw in training."
 **Do:** point at the verdict card.
-**Say:** "SmokeCheck says move practice indoors: it forecast [Y] micrograms, over the limit of 35. The raw CAMS estimate said [X]. The monitors measured [Z]."
+**Say:** "SmokeCheck says [verdict]: it forecast [Y] micrograms, against a limit of 35. The raw CAMS estimate said 34, just under the line. The day before measured 12. The monitors measured 66."
 **Do:** drag the date slider back two days, then forward through the event.
 **Say:** "Dragging through the week, you can watch the smoke arrive and the call change city by city."
-**Do:** switch the city to [second city].
-**Say:** "[Second city] on the same day: [verdict], and that was [right / wrong]."
+**Do:** switch the city to Milwaukee.
+**Say:** "Milwaukee on the same day: [verdict], and that was [right / wrong]. Monitors there measured 84."
 
 ## 3. How it works · 1:15–1:45
 **Screen:** the "Does it work?" tab with the baseline table.

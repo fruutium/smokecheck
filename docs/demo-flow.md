@@ -4,7 +4,7 @@ Plan for the Gradio app. The app is the optional extra on top of the hub's Colab
 It reads two files and nothing else: `data/predictions.csv` and `data/metrics.json`. It never imports model code.
 
 ## The 60 seconds a judge sees
-1. The app opens on **Chicago, [headline 2025 smoke day]** (the hub tells us which day). No clicks needed to see a result.
+1. The app opens on **Chicago, Thursday July 31, 2025** (measured 65.6 µg/m³; the day before was 12.4; raw CAMS said 34.3). No clicks needed to see a result.
 2. **Verdict card**, the biggest thing on the page: "Move practice indoors" or "OK to practice outside", with the forecast number and the limit of 35 µg/m³.
 3. **Three numbers** under it: "Raw CAMS estimate said X · SmokeCheck said Y · Monitors measured Z". Persistence is shown smaller.
 4. **Map** of the Midwest cities, one dot per city, colored by SmokeCheck's forecast for that day (green below the limit, orange/red above).
