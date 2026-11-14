@@ -89,7 +89,8 @@ ax.set_ylabel("PM2.5 (µg/m³)");
 #
 # We train on earlier dates and test on later ones, and never shuffle days together:
 # **train = Aug 2022 to Dec 2024, test = all of 2025.** The test year has its own smoke season
-# (June and late July / early August 2025). We don't use it for any choice; we score it once, in section 7.
+# (June and late July / early August 2025). Every final choice is made on the training years, and section 7 scores
+# 2025. We did look at 2025 a few times while building this; section 10 lists every time.
 
 # %%
 print(daily.groupby("split").agg(first_day=("date", "min"), last_day=("date", "max"),
@@ -446,6 +447,14 @@ print(week[["date", "obs_pm25", "pred_persistence", "pred_noaa", "pred_cams", "p
 # %% [markdown]
 # ## 10. Limits we know about
 #
+# - **Times we looked at 2025 before the final numbers** (all in our decision log):
+#   1. A first scratch run compared tree models with different input groups on 2025. It's why the region and
+#      weather inputs were in the list from the start.
+#   2. We scored the baselines on 2025 at a plain 35 line before fixing the 5-to-1 cost rule.
+#   3. We saw our model on 2025 at two cut-offs (24: 18 caught, 22 false alarms; 29.5: 12 and 10) before
+#      switching to the median-of-copies rule in section 6, which we wrote down before computing it.
+#   4. While building the likely range, a few ways of grouping forecasts were tried on 2025 before the rule was fixed.
+#   5. We picked the six cities knowing how many smoky days each had, 2025 included.
 # - **One smoke event dominates training.** 36 of the 38 bad training days are from 2023, mostly one June event.
 #   Going back to 2018 doesn't fix this: those years add only 3 smoke bad days (section 6).
 # - **"Today" isn't fully known in the evening.** We use today's full-day average; at 6 pm the last hours are missing.
