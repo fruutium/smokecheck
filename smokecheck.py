@@ -93,7 +93,8 @@ ax.set_ylabel("PM2.5 (µg/m³)");
 #
 # We train on earlier dates and test on later ones, and never shuffle days together:
 # **train = Aug 2022 to Dec 2024, test = all of 2025.** The test year has its own smoke season
-# (June and late July / early August 2025). We don't use it for any choice; we score it once, in section 7.
+# (June and late July / early August 2025). We don't use it to choose anything, and each model is scored on it once,
+# in section 7. (We did look at earlier models' 2025 results before our second model change; see the note in section 6.)
 
 # %%
 print(daily.groupby("split").agg(first_day=("date", "min"), last_day=("date", "max"),
@@ -368,13 +369,13 @@ print(pd.DataFrame({"all days": {n: r.mean() for n, r in rise.items()},
 #
 # | Training-year check, 2022-08-07 to 2024 (38 bad days) | average error | warn above | caught | missed | false alarms | cost | arrival days caught |
 # |---|---|---|---|---|---|---|---|
-# | current model | 2.49 | 24 | 21 | 17 | 26 | 111 | 4 of 21 |
-# | current model without CAMS | 2.48 | 29.5 | 18 | 20 | 12 | 112 | 1 of 21 |
+# | earlier model (before the new inputs) | 2.49 | 24 | 21 | 17 | 26 | 111 | 4 of 21 |
+# | earlier model without CAMS | 2.48 | 29.5 | 18 | 20 | 12 | 112 | 1 of 21 |
 # | 2018-2024, without CAMS | 2.38 | 27.5 | 18 | 20 | 15 | 115 | 1 of 21 |
 # | 2018-2024, without CAMS, plus upwind smoke | 2.39 | 30 | 17 | 21 | 11 | 116 | 1 of 21 |
 #
 # More years lowered the average error in every hidden year (by 0.06 to 0.15), but the warning cost went up a
-# little, so by our rule we kept the current model and never scored the longer one on 2025. What we learned:
+# little, so by our rule we kept the model we had then and never scored the longer one on 2025. What we learned:
 # dropping CAMS alone took arrival-day catches from 4 to 1 of 21 (each at its own cut-off). With numbers this
 # small that's a hint that CAMS helps on arrival days, not proof. Upwind smoke still didn't help, but the extra
 # years add only 3 smoke bad days, so this was a weak test of our guess about it. A cost gap of 4 is less than one missed day, so the call is close. A version that
