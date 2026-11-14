@@ -11,7 +11,7 @@
 An athletic director decides the evening before whether practice stays outside. On July 31, 2025, Minneapolis's air reached 69.1 µg/m³ of fine particles (PM2.5), almost twice the EPA's 24-hour limit of 35. NOAA's official forecast the day before said 18.7.
 
 ## What we built
-SmokeCheck gives an athletic director two things: tonight's real call for tomorrow's practice in their city (a live forecast the app refreshes by itself each evening), and a replay of every 2025 day showing whether each call was right: *Minneapolis, July 31, 2025 → **Move practice indoors** (forecast 41.3, above SmokeCheck's warning line of 32; measured 69.1).*
+SmokeCheck gives an athletic director two things: tonight's real call for tomorrow's practice in their city (a live forecast the app refreshes by itself when opened), and a replay of every 2025 day showing whether each call was right: *Minneapolis, July 31, 2025 → **Move practice indoors** (forecast 41.3, above SmokeCheck's warning line of 32; measured 69.1).*
 
 ## What we added
 <!-- FORM: the paragraph below is reused word for word as the form's "What we added" answer. -->
