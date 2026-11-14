@@ -2,7 +2,7 @@
 
 <!-- Numbers from data/metrics.json and data/predictions.csv (main 1fc892f, Nov 14; scikit-learn 1.9.1), all recomputed from predictions.csv. Re-check against the final files before submitting.
      Target: about one page (~650 words). Lines marked FORM are reused word for word on the submission form.
-     FORM, team details: Abhiddyu Chandiwal and Aiden Patel, both Jordan High School. Emails are typed on the form by us, not stored here.
+     FORM, team details: Abhiddyu Chandiwal and Aiden Patel. School and emails are typed on the form by us, not stored here.
      One-sentence pitch (FORM): SmokeCheck helps a Midwest high-school athletic director who has to decide whether tomorrow's practice is safe outdoors on a wildfire-smoke day by taking their city and tomorrow's date and telling them "practice outside" or "move indoors", with the PM2.5 forecast behind the call. -->
 
 **Track:** AI + Climate · **Team:** Abhiddyu Chandiwal and Aiden Patel · *A prototype, not medical or health advice.*
