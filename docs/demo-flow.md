@@ -4,11 +4,11 @@ Plan for the Gradio app. The app is the optional extra on top of the hub's Colab
 It reads two files and nothing else: `data/predictions.csv` and `data/metrics.json`. It never imports model code.
 
 ## The 60 seconds a judge sees (three stops, one city change, one slider step)
-1. Opens on **Milwaukee, July 31, 2025**, no clicks needed. SmokeCheck forecast 27.6, above its warning line of 24 → **Move practice indoors**. Measured 83.7. NOAA's official forecast said 13.4. (Our success.)
-2. The card says why the line is 24, not 35: forecasts run low on smoke days, and the line was set on 2022–2024 so one missed bad day costs as much as 5 false alarms.
-3. Under the card, each forecast with its own call: Raw CAMS estimate 38.5 → warn (line 29.5) · persistence 32.3 → outside (line 37) · monitors measured 83.7 (a bad day).
-4. Switch city to **Chicago**, same day: SmokeCheck 13.9 and NOAA 13.7 → outside, measured 65.6. (Our miss, and NOAA's: smoke arrived overnight. Only the optimistic CAMS archive, 34.3, warned.)
-5. Step the slider to **August 1**: SmokeCheck 54.8 → warn, NOAA 8.7 and CAMS 19.1 → outside, measured 45.5. (Smoke lingering: our strength.)
+1. Opens on **Milwaukee, July 31, 2025**, no clicks needed. SmokeCheck forecast 26.8, above its warning line of 24.5 → **Move practice indoors**. Measured 83.7. NOAA's official forecast said 13.4. (Our success.)
+2. The card says why the line is 24.5, not 35: forecasts run low on smoke days, and the line was set on 2022–2024 so one missed bad day costs as much as 5 false alarms.
+3. Under the card, each forecast with its own call: NOAA's official forecast 13.4 → no warning (line 52.5) · persistence 32.3 → outside (line 37) · raw CAMS (optimistic) 38.5 → warn (line 30) · monitors measured 83.7 (a bad day).
+4. Switch city to **Chicago**, same day: SmokeCheck 13.7 (likely 8.8–20.6) and NOAA 13.7 → outside, measured 65.6. (Our miss, and NOAA's: smoke arrived overnight. Only the optimistic CAMS archive, 34.3, warned.)
+5. Step the slider to **August 1**: SmokeCheck 54.0 → warn, NOAA 8.7 and CAMS 19.1 → outside, measured 45.5. (Smoke lingering: our strength.)
 6. Tab **"Does it work?"**: one row per forecast (MAE, warns above, bad days caught of 35, false alarms), then smoke vs clean days, then by city.
 7. Tab **"Where it fails"**: the worst misses in 2025, with a note that smoke-arrival days are the weak spot.
 
@@ -19,7 +19,7 @@ Footer on every tab: "Open-Meteo air-quality values are model estimates, not mea
 |---|---|
 | City dropdown, map dots | `city`, `lat`, `lon` |
 | Date slider | `date`, test rows only (`split == "test"`) |
-| Verdict, map colors | `pred_model` compared with `warn_at["pred_model"]` (24); each baseline uses its own `warn_at` |
+| Verdict, map colors | `pred_model` compared with `warn_at["pred_model"]` (24.5); each baseline uses its own `warn_at` |
 | "Was it a bad day?" | `obs_pm25` compared with `threshold` (35) |
 | Three numbers | `pred_cams`, `pred_model`, `obs_pm25` (+ `pred_persistence`) |
 | "Does it work?" table | `metrics.json` |
