@@ -18,9 +18,9 @@ SmokeCheck takes a city and a date and returns tomorrow's PM2.5 forecast and a c
 We started from suggested project 4.3.2 (next-day air quality forecast). Instead of forecasting from one station's history, we combine this city's EPA monitors, the five other Midwest cities, NOAA satellite smoke maps, the CAMS model estimate and the day-ahead weather forecast. We test it on the athletic director's decision, how many 2025 days above 35 µg/m³ it warns about and at what cost in false alarms, against NOAA's official day-ahead forecast.
 
 ## How it works
-- **Data:** daily PM2.5 from EPA monitors in Chicago, Milwaukee, Madison, Minneapolis, Detroit and St. Louis (7,470 city-days) is what we predict. Inputs come from Open-Meteo (CAMS estimate, weather forecasts) and NOAA's HMS smoke maps. **Open-Meteo air-quality values are model estimates, not measurements.**
+- **Data:** daily PM2.5 from EPA monitors in Chicago, Milwaukee, Madison, Minneapolis, Detroit and St. Louis (7,476 city-days) is what we predict. Inputs come from Open-Meteo (CAMS estimate, weather forecasts) and NOAA's HMS smoke maps. **Open-Meteo air-quality values are model estimates, not measurements.**
 - **Split:** train Aug 2022 – Dec 2024, test all of 2025 (2,190 city-days). Days are never shuffled.
-- **Model:** the average of a Ridge regression and a gradient-boosted tree model (scikit-learn), both predicting the change from today's PM2.5.
+- **Model:** the average of two scikit-learn models: a Ridge regression that predicts tomorrow's PM2.5, and a gradient-boosted tree model that predicts the change from today (trees can't predict above values they've seen, but a change added to today's reading can be large).
 - **Warning lines:** each forecast warns above its own cut-off, chosen on 2022–2024 so one missed bad day costs as much as 5 false alarms. SmokeCheck's is 24, not 35, because its forecasts run low on smoke days.
 
 ## Results (2025, never used in training or tuning)
@@ -39,7 +39,7 @@ We started from suggested project 4.3.2 (next-day air quality forecast). Instead
 
 **Where it fails.** When smoke *arrives* (yesterday clean, today bad), SmokeCheck caught only 6 of 21 days (NOAA 4, CAMS archive 11). On July 31 in Chicago, SmokeCheck said 13.9 and NOAA 13.7, and the air measured 65.7: our model leans on today's readings, which are still clean the day before smoke arrives. When smoke *lingers*, SmokeCheck caught 12 of 14 and NOAA 2. On August 1 in Chicago, NOAA said 8.7, SmokeCheck said 54.8, and the air measured 45.5.
 
-**Tried and dropped:** a tree model predicting the PM2.5 level directly caught 1 of 38 bad training days, because trees can't predict above values they've seen. We also added NOAA-mapped smoke 300–900 km upwind of each city: it preceded 16 of 21 training arrival days, but the model's error didn't move (2.49 either way), because without 2023 the training years have only 2 bad days to learn from.
+**Tried and dropped:** a tree model predicting the PM2.5 level directly caught 1 of 38 bad training days, because trees can't predict above values they've seen. We also added NOAA-mapped smoke 300–900 km upwind of each city: it preceded 16 of 21 training arrival days, but the model's error didn't move (2.49 either way). Our guess: without 2023, the training years have only 2 bad days to learn from.
 
 **Honesty notes:** one early scratch run looked at 2025 before we fixed our process; every choice since used 2022–2024 only. NOAA upgraded its model in May 2024, between our training and test years. Using the real weather instead of the forecast changes our error by only 0.01, so weather isn't leaking the answer. With 35 bad test days, catch counts are noisy; the average error is the steadier number.
 
