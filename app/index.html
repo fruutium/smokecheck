@@ -459,8 +459,8 @@ function drawTomorrow() {
   $('#status').textContent = note;
   $('#status').dataset.busy = status.refreshing;
   if (!view || view.state !== 'ok') {   // nothing to show: a grey sky and one short line
-    $('#when').textContent = '';
-    return go({ ...shown }, note ? grey(note) : fromCall(view.call));
+    $('#when').textContent = $('#made').textContent = '';
+    return go({ ...shown }, note ? grey(note) : view ? fromCall(view.call) : grey('No forecast yet'));
   }
   line = view.warn_at;
   $('#when').textContent = 'Practice on ' + longDate(view.date);
