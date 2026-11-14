@@ -266,23 +266,23 @@ print(pd.DataFrame({col: score(train, col) for col in FORECASTS + ["pred_trees_l
 # `fetch_early.py` adds the 4.6 years before our data starts (`data/daily_early.csv`: EPA readings, the same
 # Open-Meteo weather archive, NOAA smoke maps). CAMS doesn't exist on Open-Meteo before August 2022, so the longer
 # model leaves out the three CAMS inputs. The extra years have few bad days: 7, and only 3 of them are smoke
-# (Minneapolis, July 29-31, 2021). Three are Fourth of July fireworks in 2020 and one is a December day in Detroit;
-# the September 2020 western smoke never pushed a city's daily average above 35. Before running the comparison we
-# wrote down the rule: adopt the longer model only if, on the same 2022-2024 days, its average error is lower
+# (Minneapolis, July 29-31, 2021). Three are probably Fourth of July fireworks in 2020 (July 4-5, no smoke on the
+# NOAA maps) and one is a December day in Detroit; the September 2020 western smoke never pushed a city's daily
+# average above 35. Before running the comparison we wrote down the rule: adopt the longer model only if, on the same 2022-2024 days, its average error is lower
 # **and** its warning cost (5 × missed + false alarms) isn't higher. `compare_seasons.py` hides one year at a time:
 #
-# | Training-year check, 2022-08-07 to 2024 (38 bad days) | average error | warn above | caught | false alarms | cost | arrival days caught |
-# |---|---|---|---|---|---|---|
-# | current model | 2.49 | 24 | 21 | 26 | 111 | 4 of 21 |
-# | current model without CAMS | 2.48 | 29.5 | 18 | 12 | 112 | 1 of 21 |
-# | 2018-2024, without CAMS | 2.38 | 27.5 | 18 | 15 | 115 | 1 of 21 |
-# | 2018-2024, without CAMS, plus upwind smoke | 2.39 | 30 | 17 | 11 | 116 | 1 of 21 |
+# | Training-year check, 2022-08-07 to 2024 (38 bad days) | average error | warn above | caught | missed | false alarms | cost | arrival days caught |
+# |---|---|---|---|---|---|---|---|
+# | current model | 2.49 | 24 | 21 | 17 | 26 | 111 | 4 of 21 |
+# | current model without CAMS | 2.48 | 29.5 | 18 | 20 | 12 | 112 | 1 of 21 |
+# | 2018-2024, without CAMS | 2.38 | 27.5 | 18 | 20 | 15 | 115 | 1 of 21 |
+# | 2018-2024, without CAMS, plus upwind smoke | 2.39 | 30 | 17 | 21 | 11 | 116 | 1 of 21 |
 #
 # More years lowered the average error in every hidden year (by 0.06 to 0.15), but the warning cost went up a
 # little, so by our rule we kept the current model and never scored the longer one on 2025. What we learned:
-# the CAMS inputs are what let the current model catch arrival days (4 of 21 with them, 1 of 21 without), and
-# upwind smoke still didn't help. The extra years add only 3 smoke bad days, though, so this was a weak test of
-# our guess about upwind smoke. A cost gap of 4 is less than one missed day, so the call is close. A version that
+# dropping CAMS alone took arrival-day catches from 4 to 1 of 21 (each at its own cut-off). With numbers this
+# small that's a hint that CAMS helps on arrival days, not proof. Upwind smoke still didn't help, but the extra
+# years add only 3 smoke bad days, so this was a weak test of our guess about it. A cost gap of 4 is less than one missed day, so the call is close. A version that
 # keeps CAMS where it exists might get both; we didn't try it, because we had decided not to add variants after
 # seeing these results.
 
