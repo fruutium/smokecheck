@@ -38,7 +38,7 @@ Do one silent practice run with these clicks, then record. Keep the browser wind
 | 0:45 | City dropdown → Chicago | "OK to practice outside" · SmokeCheck 15.3 · NOAA 13.7 · measured 65.6 · "Likely between 10.1 and 21.0" |
 | 1:00 | Click the slider handle, press the right-arrow key once | Date box: Friday, August 1, 2025 · "Move practice indoors" · SmokeCheck 51.8 · NOAA 8.7 · measured 45.5 |
 | 1:15 | Tab "Does it work?" | SmokeCheck row first: 2.36 average error |
-| 1:45 | Tab "Where it fails" | the "Smoke arrival days are the weak spot" note |
+| 1:45 | Tab "Where it fails" | the note "SmokeCheck misses the days smoke first arrives" (0 of 21) |
 | 2:00 | Stop | |
 
 ## Recording checklist
