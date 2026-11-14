@@ -59,7 +59,7 @@ def smoke_levels(path):
     levels = [0] * len(CITIES)
     for item in shapefile.Reader(str(path)).iterShapeRecords():
         level = LEVEL[item.record["Density"]]
-        # Every outline in 2022-2025 is one simple ring (we checked), so one Path per outline is enough.
+        # Every outline in 2018-2025 is one simple ring (we checked), so one Path per outline is enough.
         inside = Path(item.shape.points).contains_points(CITY_POINTS)
         levels = [max(old, level) if hit else old for old, hit in zip(levels, inside)]
     return levels
