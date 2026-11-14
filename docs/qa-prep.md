@@ -35,26 +35,26 @@ We forecast tomorrow's daily PM2.5 for six Midwest cities, so an athletic direct
 **4.**
 - **Q:** What breaks it?
 - **Who answers:** Abhiddyu
-- **A:** Arrival days, when today is clean and tomorrow is bad. We caught 6 of 21 of those. On July 31 in Chicago we said 13.9, NOAA said 13.7, and the air measured 65.65. The day before, Chicago was 12.4, but Minneapolis was already at 50.6 and NOAA had mapped a medium plume over Chicago. The model still leaned on Chicago's own clean reading. (recheck after more-seasons)
+- **A:** Arrival days, when today is clean and tomorrow is bad. We caught 6 of 21 of those. On July 31 in Chicago we said 13.9, NOAA said 13.7, and the air measured 65.6. The day before, Chicago was 12.4, but Minneapolis was already at 50.6 and NOAA had mapped a medium plume over Chicago. The model still leaned on Chicago's own clean reading. (recheck after more-seasons)
 - **If they push:** "36 of our 38 bad training days are from 2023, so it never learned to trust a smoky neighbour. More seasons is the fix."
 
 **5.**
 - **Q:** Is tomorrow's weather leaking into your inputs?
 - **Who answers:** Abhiddyu
-- **A:** We had to train on near-real weather, because day-ahead weather forecasts aren't archived for 2022–2023. The 2025 test, though, uses the weather forecast actually made the day before (Open-Meteo Previous Runs). Swapping in the real weather changes our error from 2.59 to 2.58, and we still catch 18 either way, so weather isn't carrying the answer.
-- **If they push:** "That also tells us the model leans far more on today's readings than on the weather. [ask Abhiddyu: did we ever measure how much each input matters?]"
+- **A:** We had to train on near-real weather, because day-ahead weather forecasts aren't archived for 2022–2023. The 2025 test, though, uses the weather forecast actually made the day before (Open-Meteo Previous Runs). Swapping in the real weather changes our error from 2.59 to 2.58, and we still catch 18 either way, so training on real weather isn't leaking the answer.
+- **If they push:** "Weather does matter: we checked by shuffling inputs on the held-out years, and shuffling the weather forecast raises error by 0.65, second only to this city's readings at 0.98. So the 0.01 tells us the day-ahead forecast is close to the real weather, not that weather is unused."
 
 **6.**
 - **Q:** CAMS is a model run with hindsight. Doesn't that leak?
 - **Who answers:** Abhiddyu
 - **A:** Yes for raw CAMS, which is why we label it "optimistic". Open-Meteo's "previous day" CAMS values are empty for 2022–2025, so its history is stitched from short-range runs that already see the smoke. Our model never uses tomorrow's CAMS, only today's value and how far off today's value was from the monitors.
-- **If they push:** "Is today's CAMS really out by the evening? [ask Abhiddyu: when is the day's CAMS value published?]"
+- **If they push:** "CAMS runs twice a day, at 00Z and 12Z, so by evening the runs covering today exist. We didn't check the exact publication delay. And the model barely uses it: shuffling today's CAMS raises error by only 0.03."
 
 **7.**
 - **Q:** Did you ever look at 2025 while you were building?
 - **Who answers:** Abhiddyu
-- **A:** Once, early on. A scratch run scored several feature sets on 2025, with error around 2.5–2.9 and 16 of 35 caught, before we had fixed our process. After that, every choice was made on the training years only, and 2025 was scored once at the end. We disclose this in the write-up. We can't un-see it, so the honest fix is a fresh holdout year.
-- **If they push:** "[ask Abhiddyu: which feature sets the scratch run compared, and whether the final set was one of them.] We rejected Jan–May 2026 as a holdout because the EPA data is partial and missing for Minneapolis."
+- **A:** Once, early on, before we'd set up training-only selection. One scratch run tried tree models on 2025 with growing sets of inputs, two loss types, and warning at 35 vs 25, with error from 2.1 to 3.5. It's why the region and weather inputs were in our list from the start. The final choices (the Ridge-plus-trees average, absolute loss, the line at 24) came later from the training-year checks, and 2025 was scored once at the end.
+- **If they push:** "The sets went: this city's readings, then adding weather, region, smoke maps, today's CAMS, and tomorrow's CAMS (the optimistic one). We disclose the run in the write-up. We can't un-see it, so the clean fix is a fresh holdout year. We rejected Jan–May 2026 because the EPA data is partial and missing for Minneapolis."
 
 **8.**
 - **Q:** Do your inputs really exist by the evening before?
@@ -84,19 +84,19 @@ We forecast tomorrow's daily PM2.5 for six Midwest cities, so an athletic direct
 - **Q:** Why average Ridge and trees, and why predict the change from today?
 - **Who answers:** Abhiddyu
 - **A:** Trees can't predict above values they've seen: trees on the PM2.5 level had error 2.74 but caught 1 of 38 bad training days. So the trees predict the change from today, and today plus a big change can be large. Ridge predicts the level, since a weighted sum can already go beyond anything seen. Averaging pairs one that extrapolates with one that catches curved patterns. (recheck after more-seasons)
-- **If they push:** "Ridge has today's reading as an input, so for Ridge, level or change is nearly the same model. [ask Abhiddyu: Ridge-alone and trees-alone numbers.]"
+- **If they push:** "On the training-year checks (2025 never scored for these), Ridge alone had error 2.69 with 22 of 38 caught and 25 false alarms. Trees alone had 2.51, 22 caught and 42 false alarms. The average had 2.49, 21 caught and 26 false alarms: the best error, with far fewer false alarms than trees alone."
 
 **13.**
 - **Q:** Why did the upwind smoke feature fail if the signal is real?
 - **Who answers:** Abhiddyu
 - **A:** The signal is real: smoke 300–900 km upwind came before 16 of the 21 training arrival days, against 17% of ordinary days. But the training-years error was 2.49 with or without it. Our best guess is that when 2023 is hidden, only 2 bad days are left to learn from. We never scored it on 2025.
-- **If they push:** "Tiny changes moved warning counts by a few days, so we wouldn't adopt it on that noise."
+- **If they push:** "It fits our shuffle check on the held-out years: shuffling the smoke maps raised error by 0.00 and today's CAMS by 0.03, so the model barely uses smoke inputs at all. Tiny changes also moved warning counts by a few days, so we wouldn't adopt it on that noise."
 
 **14.**
 - **Q:** Why these six cities?
 - **Who answers:** Abhiddyu
-- **A:** Chicago, our headline city, has only 3 bad days in 2025, which is too few to measure anything. Six metros give 35. Each city's target is the average of all its EPA monitors, and the other cities' readings act as an early signal, since smoke drifts across the Midwest.
-- **If they push:** "[ask Abhiddyu: why these six specifically.] St. Louis is the weak spot, with only 2 bad test days."
+- **A:** We ranked Midwest metros by EPA coverage and smoke days and took the biggest ones with a full EPA record every day of 2022–2025 and the most 2025 days above 35: Milwaukee and Minneapolis 9 each, Madison and Detroit 6, Chicago 3, St. Louis 2. They run north to south, so we can see smoke move across the region, and Chicago is the headline because it has the most schools. Honestly, those bad-day counts included 2025, so the test year helped pick the cities. The model never trained on 2025, but the cities were chosen partly for being smoky that year.
+- **If they push:** "St. Louis is the southern city that rarely gets smoke. We skipped Duluth (15 bad days, but small), Grand Rapids and the Ohio cities to keep it to six. Chicago alone would give only 3 bad test days; six give 35."
 
 **15.**
 - **Q:** 22 false alarms against NOAA's 1. Isn't that worse for an athletic director?
@@ -127,7 +127,13 @@ We forecast tomorrow's daily PM2.5 for six Midwest cities, so an athletic direct
 - **A:** Claude, through Claude Code, wrote most of the code (data scripts, the model and evaluation notebook, the Gradio app), ran the experiments, checked which forecast archives were truly day-ahead, and drafted the write-up and video script, which we edited. We chose the track and project, picked which improvements to try (the upwind feature, which we dropped, and the NOAA baseline), and read all the code. Ask us about any line.
 - **If they push:** Be ready to walk through `add_features` (why everything is `shift(1)`), `fit` and `predict`, and `best_cut_off` without notes.
 
+**20. (only if the range band is merged)**
+- **Q:** Was your forecast range tuned on 2025?
+- **Who answers:** Abhiddyu
+- **A:** A little, and we say so. Before its rule was fixed, we tried 4 ways of grouping the forecasts on 2025. All four came out at 80–81% coverage, the share of 2025 days where the measured value fell inside the range.
+- **If they push:** "All four gave nearly the same coverage, so picking one on 2025 couldn't flatter it much."
+
 ## Write-up mismatches (status)
 - Fixed in the write-up: Ridge predicts the level and the trees predict the change; 7,476 city-days; the upwind reason is now "our guess".
-- Rounding: Chicago Jul 31 is 65.65 in the data. Say "about 66" out loud; the write-up and app show 65.7.
+- Rounding: Chicago Jul 31 is 65.6 (the unrounded EPA mean is 65.648; 65.7 came from rounding twice). The write-up and app use 65.6; the app shows it once the CSV keeps more decimals. Say "about 66" out loud.
 - The Decision Log's 11:10 PM baseline numbers (one 35 line for everyone) are superseded. Don't quote them.
