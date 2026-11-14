@@ -1,15 +1,15 @@
 # SmokeCheck: finals Q&A prep
 
-Sources: `metrics.json`, `predictions.csv`, notebook output, write-up, Decision Log. **(prep calc)** = computed from `predictions.csv` for this doc, not in the write-up; say "we also checked". **(recheck after more-seasons)** = changes if retrained with 2018–2021.
+Sources: `metrics.json`, `predictions.csv`, notebook output, write-up, Decision Log. **(prep calc)** = computed from `predictions.csv` for this doc, not in the write-up; say "we also checked". **(recheck after more-seasons)** = changes if retrained with 2018–2021. **Costs** use our rule, cost = 5 × misses + false alarms. Lower is better. All catch counts assume scikit-learn 1.9.1; older versions give 17 of 35, not 18.
 
 ## 30-second version
-We forecast tomorrow's daily PM2.5 for six Midwest cities, so an athletic director knows the evening before whether practice should move indoors. Inputs are only what's known that evening: today's monitor readings in this city and the other five, NOAA's smoke maps, today's CAMS estimate and tomorrow's weather forecast. Two models, Ridge and gradient-boosted trees, are averaged. We trained on Aug 2022 to Dec 2024 and tested once on all of 2025. Against NOAA's official day-ahead forecast, our average error is 19% lower and we warned on 18 of 35 bad days against NOAA's 6. We pay for that with 22 false alarms against NOAA's 1, and we still miss most days when smoke arrives overnight.
+We forecast tomorrow's daily PM2.5 for six Midwest cities, so an athletic director knows the evening before whether practice should move indoors. Inputs are only what's known that evening: today's monitor readings in this city and the other five, NOAA's smoke maps, today's CAMS estimate and tomorrow's weather forecast. Two models, Ridge and gradient-boosted trees, are averaged. We trained on Aug 2022 to Dec 2024 and tested once on all of 2025. Against NOAA's official day-ahead forecast, our average error is 19% lower. Under our rule, where one missed bad day costs as much as 5 false alarms, our decisions cost 107 against NOAA's 123 at the plain 35 line. Even NOAA's best line, picked with hindsight, costs 118. We still miss most days when smoke arrives overnight.
 
 ## 5 numbers to memorize (recheck after more-seasons)
-1. **2.59 vs 3.20**: our average error in 2025 vs NOAA's, in µg/m³ over 2,190 city-days.
-2. **18 vs 6 of 35**: bad days (above 35) each one warned on.
-3. **22 vs 1**: false alarms. This is the price.
-4. **24**: our warning line. It was set on 2022–2024 with one miss costing as much as 5 false alarms.
+1. **2.59 vs 3.20**: our average error in 2025 vs NOAA's, in µg/m³ over 2,190 city-days, 19% lower. No warning line is involved.
+2. **107 vs 123**: decision cost, us vs NOAA at the plain 35 line. NOAA costs 146 at its tuned 45 line and 118 at its best hindsight line. Raw CAMS costs 106, but it's optimistic.
+3. **18 caught, 22 false alarms**: our 35 bad days. NOAA at 35 catches 12 with 8 false alarms (at 45: 6 and 1). Always say both.
+4. **24**: our warning line, set on 2022–2024 by the 5:1 rule.
 5. **6 of 21**: arrival days we caught, against 12 of 14 lingering days. This is our weak spot.
 
 ## Questions
@@ -17,20 +17,20 @@ We forecast tomorrow's daily PM2.5 for six Midwest cities, so an athletic direct
 **1.**
 - **Q:** How do you know it works and isn't just overfit?
 - **Who answers:** Abhiddyu
-- **A:** We scored all of 2025 once, and never used it for choices. Our average error is 2.59, against 3.20 for NOAA, 3.40 for "tomorrow equals today" and 4.33 for the usual value for that month. It's lowest in all six cities, and on smoke days it's 8.63 against NOAA's 10.82. (recheck after more-seasons)
-- **If they push:** "We tie the raw CAMS archive on catches, 18 and 18, and that archive partly sees the target day."
+- **A:** We scored all of 2025 once, and never used it for choices. Our average error is 2.59, against 3.20 for NOAA, 3.40 for "tomorrow equals today" and 4.33 for the usual value for that month. Under our 5:1 rule we cost 107, against NOAA's 123 at the plain 35 line. Error is lowest in all six cities, and 8.63 against NOAA's 10.82 on smoke days. (recheck after more-seasons)
+- **If they push:** "Raw CAMS costs 106, slightly better than us, but Open-Meteo keeps no true day-ahead CAMS archive, so its value partly sees the day's smoke. To reproduce, use scikit-learn 1.9.1: older versions give 17 of 35, not 18. [ask Abhiddyu: confirm the pin has landed; `requirements.txt` and `smokecheck.py` don't pin a version yet.]"
 
 **2.**
 - **Q:** NOAA already publishes a forecast. Why would anyone use yours?
 - **Who answers:** Aiden
-- **A:** NOAA's forecast rarely goes high enough on smoke days. On July 31, 2025 in Milwaukee it said 13.4; the air measured 83.7. We said 27.6, above our line: "move indoors". On days when smoke stayed for a second day, we warned on 12 of 14 and NOAA on 2. NOAA is far better at not crying wolf, so an athletic director could use both. (recheck after more-seasons)
-- **If they push:** "When smoke arrives overnight we're both bad: we caught 6 of 21 of those days and NOAA caught 4."
+- **A:** Our error is 19% lower than NOAA's, 2.59 against 3.20, and our decisions cost 107 against NOAA's 123 at the plain 35 line. NOAA's forecast rarely goes high enough on smoke days. On July 31, 2025 in Milwaukee it said 13.4; the air measured 83.7, and we said 27.6, above our line: "move indoors". NOAA has fewer false alarms, so an athletic director could use both. (recheck after more-seasons)
+- **If they push:** "We caught 18 of 35 with 22 false alarms; NOAA at 35 caught 12 with 8. On arrival days we're both bad: we caught 6 of 21, NOAA at 35 caught 5." (prep calc)
 
 **3.**
-- **Q:** You gave NOAA a warning line of 45. Isn't that rigged against NOAA?
+- **Q:** NOAA's line of 45 looks tuned to make NOAA look bad.
 - **Who answers:** Abhiddyu
-- **A:** Every forecast got the same rule: try lines from 10 to 45 on 2022–2024, keep the cheapest. NOAA's cost kept falling up to 45, our cap, because in training its forecasts above 35 were mostly false alarms (9 catches, 56 false alarms). We also gave NOAA its best possible line chosen with hindsight on 2025 itself. That line, 25.5, still costs 118 against our 107. Hindsight check only, never used for a choice. (prep calc; recheck after more-seasons)
-- **If they push:** "Caveats: NOAA's line was tuned mostly on its pre-May-2024 model, and its day covers 22 of EPA's 24 hours. And at a plain 35 line NOAA catches 12 with 8 false alarms, beating our 9 with 6. We win at the lower line, not every line."
+- **A:** It was chosen by the same rule as everyone's: try lines from 10 to 45 on 2022–2024 and keep the cheapest. In 2025, NOAA would actually have done better at 35, costing 123 instead of 146, and best at about 25.5, costing 118, a line picked with hindsight. SmokeCheck still costs less, at 107. That's why we lead with average error and NOAA at 35, not the 45 line. (recheck after more-seasons)
+- **If they push:** "NOAA's training cost kept falling up to 45, our cap, and its line was tuned mostly on the model from before its May 2024 upgrade. Its day also covers only 22 of EPA's 24 hours. With both forecasts on a plain 35 line, NOAA catches 12 with 8 false alarms and we catch 9 with 6."
 
 **4.**
 - **Q:** What breaks it?
@@ -54,7 +54,7 @@ We forecast tomorrow's daily PM2.5 for six Midwest cities, so an athletic direct
 - **Q:** Did you ever look at 2025 while you were building?
 - **Who answers:** Abhiddyu
 - **A:** Once, early on, before we'd set up training-only selection. One scratch run tried tree models on 2025 with growing sets of inputs, two loss types, and warning at 35 vs 25, with error from 2.1 to 3.5. It's why the region and weather inputs were in our list from the start. The final choices (the Ridge-plus-trees average, absolute loss, the line at 24) came later from the training-year checks, and 2025 was scored once at the end.
-- **If they push:** "The sets went: this city's readings, then adding weather, region, smoke maps, today's CAMS, and tomorrow's CAMS (the optimistic one). We disclose the run in the write-up. We can't un-see it, so the clean fix is a fresh holdout year. We rejected Jan–May 2026 because the EPA data is partial and missing for Minneapolis."
+- **If they push:** "An early commit also scored the baselines on 2025 at a plain 35 line. The sets went: this city's readings, then adding weather, region, smoke maps, today's CAMS, and tomorrow's CAMS (the optimistic one). We disclose the run in the write-up. We can't un-see it, so the clean fix is a fresh holdout year. We rejected Jan–May 2026 because the EPA data is partial and missing for Minneapolis."
 
 **8.**
 - **Q:** Do your inputs really exist by the evening before?
@@ -71,8 +71,8 @@ We forecast tomorrow's daily PM2.5 for six Midwest cities, so an athletic direct
 **10.**
 - **Q:** Why does one miss cost 5 false alarms? That number looks made up.
 - **Who answers:** Aiden
-- **A:** It's a judgement call, fixed before we saw any results. Sending kids to run in smoke is much worse than an unneeded indoor practice, but if we cry wolf every week the athletic director stops listening. We also checked how sensitive it is. At 3:1 our line would be 28.5, catching 12 with 11 false alarms. At 10:1 it would be 22.5, catching 19 with 27. (prep calc; recheck after more-seasons)
-- **If they push:** "We didn't ask a real athletic director. That's the first thing we'd do next."
+- **A:** It's a judgement call. We fixed the 5:1 rule before scoring our model on 2025; we had already seen the baselines' 2025 numbers at a plain 35 line. Sending kids to run in smoke is much worse than an unneeded indoor practice, but if we cry wolf every week the athletic director stops listening.
+- **If they push:** "It's not knife-edge: at 3:1 our line would be 28.5, catching 12 with 11 false alarms, and at 10:1 it would be 22.5, catching 19 with 27. We haven't asked a real athletic director yet; that's next." (prep calc; recheck after more-seasons)
 
 **11.**
 - **Q:** Why does each forecaster get its own line? And why is yours 24 and not 35?
@@ -101,19 +101,19 @@ We forecast tomorrow's daily PM2.5 for six Midwest cities, so an athletic direct
 **15.**
 - **Q:** 22 false alarms against NOAA's 1. Isn't that worse for an athletic director?
 - **Who answers:** Aiden
-- **A:** It's under 4 per city per year, 21 of 22 in June–August. 16 came the day after a bad day, when smoke cleared faster than expected, and the median reading on those days was still 25. NOAA's 1 false alarm came with 29 missed bad days. Honestly, in Chicago we caught 1 of 3 with 6 false alarms. (prep calc; recheck after more-seasons)
-- **If they push:** "Under our 5:1 rule we cost 107 and NOAA costs 146. An athletic director who hates false alarms can raise the line."
+- **A:** Compare at the plain 35 line: there NOAA has 8 false alarms and catches 12, while we catch 18. Our 22 are under 4 per city per year, and 16 came the day after a bad day, when smoke cleared faster than expected, with a median reading of 25 on those days. Honestly, in Chicago we caught 1 of 3 with 6 false alarms. (prep calc; recheck after more-seasons)
+- **If they push:** "NOAA's 1 false alarm is at its 45 line, which comes with 29 misses. Under our 5:1 rule we cost 107, NOAA 123 at 35 and 146 at 45. An athletic director who hates false alarms can raise our line."
 
 **16.**
 - **Q:** 35 bad days is tiny. Can you trust the catch counts?
 - **Who answers:** Abhiddyu
-- **A:** Not much. The 35 bad days fall on only 18 dates, 19 of them July 30 to August 5: really a few smoke events. The steadier number is average error over 2,190 days, where we're best in every city. Day by day, 17 bad days were caught only by us and 5 only by NOAA. (prep calc; recheck after more-seasons)
+- **A:** Not much. The 35 bad days fall on only 18 dates, 19 of them July 30 to August 5: really a few smoke events. The steadier number is average error over 2,190 days, where we're best in every city. Against NOAA at 35, 11 bad days were caught only by us and 5 only by NOAA. (prep calc; recheck after more-seasons)
 - **If they push:** "Those days aren't independent, so we don't claim a significance test. More seasons is the fix."
 
 **17.**
 - **Q:** Who would actually use this, and what changes for them?
 - **Who answers:** Aiden
-- **A:** A Midwest high-school athletic director deciding the evening before. They get one call, "practice outside" or "move indoors", with the number behind it. Across 2025 it warned on three times as many bad days as NOAA's forecast, 18 against 6. It's a prototype, not health advice, and it forecasts the daily average, not practice hours.
+- **A:** A Midwest high-school athletic director deciding the evening before. They get one call, "practice outside" or "move indoors", with the number behind it. Across 2025 it warned on 18 of 35 bad days, against 12 for NOAA's forecast at the 35 line, which itself had 8 false alarms to our 22. It's a prototype, not health advice, and it forecasts the daily average, not practice hours.
 - **If they push:** "We haven't tested it with a real athletic director yet. That's next."
 
 **18.**
