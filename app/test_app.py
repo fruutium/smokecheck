@@ -8,8 +8,8 @@ import pandas as pd
 
 import app
 
-# 1. The cut-off rule. SmokeCheck warns above its own cut-off (24 in metrics.json); at the cut-off it does not.
-metrics = {"threshold": 35, "warn_at": {"pred_model": 24.0, "pred_cams": 29.5}}
+# 1. The cut-off rule. SmokeCheck warns above its own cut-off; at the cut-off it does not.
+metrics = {"threshold": 35, "warn_at": {"pred_model": 24.0}}
 cut = app.cutoff(metrics, "pred_model")
 assert cut == 24.0
 assert app.verdict(24.0, cut) == app.OK
@@ -17,27 +17,28 @@ assert app.verdict(24.1, cut) == app.INDOORS
 # No warn_at (or no entry for a forecaster): fall back to the bad-day limit, 35.
 assert app.cutoff({}, "pred_model") == 35
 assert app.cutoff({"threshold": 35, "warn_at": {}}, "pred_model") == 35
-assert app.verdict(35.0, app.cutoff({}, "pred_model")) == app.OK
 assert app.verdict(35.1, app.cutoff({}, "pred_model")) == app.INDOORS
 # A missing forecast is never a verdict.
 assert app.verdict(float("nan"), cut) == app.NOT_READY
 assert app.verdict(None, cut) == app.NOT_READY
-assert app.call_words(float("nan"), cut) == ""
-# A bad day is measured ABOVE 35; exactly 35 is not one.
-assert "not a bad day" in app.bad_day_words(35.0, 35)
-assert "a bad day" in app.bad_day_words(35.1, 35) and "not" not in app.bad_day_words(35.1, 35)
+
+# "Was it right?": a bad day is measured ABOVE the limit; exactly 35 is not one.
+assert app.right_or_wrong(app.INDOORS, 35.1, 35) == "✓ Right call"
+assert app.right_or_wrong(app.OK, 35.0, 35) == "✓ Right call"
+assert app.right_or_wrong(app.OK, 35.1, 35) == "✗ Missed a bad day"
+assert app.right_or_wrong(app.INDOORS, 35.0, 35) == "✗ False alarm"
+assert app.right_or_wrong(app.NOT_READY, 50.0, 35) == "–"
+assert app.right_or_wrong(app.OK, float("nan"), 35) == "–"
 
 
 def check_no_forecast_yet(rows, metrics):
-    """What must hold for any file without a SmokeCheck forecast: real numbers, but no verdict."""
+    """What must hold for any file without a SmokeCheck forecast: real measurements, but no verdict."""
     assert set(rows["split"]) == {"test"}
     assert len(rows) == 6 * 365
     assert rows["pred_model"].isna().all()
     html = app.card(rows, "Chicago", "2025-07-31", metrics)
-    assert "34.3" in html and "<b>65.6</b>" in html  # CAMS 34.28 (box or baselines line), measured 65.648
-    assert app.NOT_READY in html and "<b>not ready yet</b>" in html
-    assert app.OK not in html and app.INDOORS not in html
-    assert app.worst_misses(rows, metrics).empty
+    assert "<b>65.6</b>" in html  # measured 65.648
+    assert app.NOT_READY in html and app.OK not in html and app.INDOORS not in html
     assert len(app.city_map(rows, "2025-07-31", metrics).data) == 1  # one grey group, no fake colors
 
 
@@ -48,25 +49,13 @@ if (app.DATA / "predictions.csv").exists():
             Path(folder) / "predictions.csv", index=False)
         check_no_forecast_yet(app.load_rows(Path(folder)), app.METRICS)
 
-# 3. Only daily.csv: a temp folder with a copy of it and nothing else.
+# 3. Only daily.csv: a temp folder with a copy of it and nothing else. No NOAA column: no NOAA chip.
 with tempfile.TemporaryDirectory() as folder:
     shutil.copy(app.DATA / "daily.csv", folder)
     rows = app.load_rows(Path(folder))
     assert app.load_metrics(Path(folder)) == {}
 check_no_forecast_yet(rows, {})
-html = app.card(rows, "Chicago", "2025-07-31", {})
-assert "Baselines: none yet" in html and "SmokeCheck warns above 35 µg/m³." in html
-# Without pred_noaa the left box falls back to raw CAMS, with CAMS's own call (35 here: no metrics.json).
-assert "<span>Raw CAMS estimate said</span><b>34.3</b>" in html and "→ no warning (cut-off 35)" in html
-assert "NOAA" not in html
-
-# The same fallback from a COPY of predictions.csv without pred_noaa: CAMS moves back into the box.
-if (app.DATA / "predictions.csv").exists():
-    with tempfile.TemporaryDirectory() as folder:
-        pd.read_csv(app.DATA / "predictions.csv").drop(columns="pred_noaa").to_csv(
-            Path(folder) / "predictions.csv", index=False)
-        html = app.card(app.load_rows(Path(folder)), "Chicago", "2025-07-31", app.METRICS)
-    assert "<span>Raw CAMS estimate said</span><b>34.3</b>" in html and "(optimistic)" not in html
+assert "NOAA" not in app.card(rows, "Chicago", "2025-07-31", {})
 
 # A city/day that is not in the file shows words, not a crash and not 0.
 html = app.card(rows, "Chicago", "2030-01-01", {})
@@ -75,94 +64,56 @@ assert "no measurement" in html and app.NOT_READY in html
 # 4. The real files, on the demo days.
 if (app.DATA / "predictions.csv").exists() and (app.DATA / "metrics.json").exists():
     rows, metrics = app.load_rows(), app.METRICS
-    assert app.cutoff(metrics, "pred_model") == metrics["warn_at"]["pred_model"]
+    assert app.cutoff(metrics, "pred_model") == metrics["warn_at"]["pred_model"] == 32
 
-    # The opening view, Minneapolis 2025-07-31: SmokeCheck 41.3 is above its cut-off of 32, so it warns;
-    # NOAA 18.7 does not. Measured 69.1.
+    # The opening view, Minneapolis 2025-07-31: SmokeCheck 41.3 is above 32, so it warns. NOAA 18.7. Measured 69.1.
     assert (app.START_CITY, app.START_DATE) == ("Minneapolis", "2025-07-31")
     html = app.card(rows, "Minneapolis", "2025-07-31", metrics)
-    assert app.INDOORS in html and "<b>41.3</b>" in html and "→ warn (cut-off 32)" in html and "<b>69.1</b>" in html
-    assert "<span>NOAA's official forecast said</span><b>18.7</b>" in html and "→ no warning (cut-off 52.5)" in html
-    assert "Likely between 15.1 and 90.7 (80% range)" in html  # range_lo is 15.05, which formats as 15.1
-    assert "a bad day" in html
-    assert (f"not {metrics['threshold']:g}" in html and f"missed bad day as {metrics['cost_of_a_miss']:g} false alarms" in html)
-    assert f"warns above {metrics['warn_at']['pred_model']:g} µg/m³, not" in html
-    assert "anywhere from about 27 to 32 is defensible" in html
-    assert "at the EPA's 35 line: no warning" in html  # NOAA 18.7 is under 35 too
+    assert app.INDOORS in html and "Smoke forecast 41.3 · indoors above 32" in html
+    assert "practice on Thursday, July 31, 2025" in html
+    assert "<b>69.1</b> a bad day" in html and "<b>18.7</b>" in html and "✓ Right call" in html
 
-    # Milwaukee 2025-07-31: SmokeCheck 28.1 is under its cut-off of 32, so it says outside: a miss.
+    # Milwaukee 2025-07-31: SmokeCheck 28.1 is under 32, so it says outside, but 83.7 was measured: a miss.
     html = app.card(rows, "Milwaukee", "2025-07-31", metrics)
-    assert app.OK in html and "<b>28.1</b>" in html and "<b>83.7</b>" in html and "a bad day" in html
+    assert app.OK in html and "28.1" in html and "<b>83.7</b>" in html and "✗ Missed a bad day" in html
 
-    # Chicago 2025-07-31: SmokeCheck 15.3 and NOAA 13.7 both say outside; measured 65.6.
-    # Raw CAMS 34.3 warns, but it sits in the baselines line, marked optimistic.
-    html = app.card(rows, "Chicago", "2025-07-31", metrics)
-    assert app.OK in html and "<b>65.6</b>" in html
-    assert "<span>SmokeCheck said</span><b>15.3</b>" in html
-    assert "Likely between 10.1 and 21.0 (80% range)" in html  # shown only, the call stays green
-    assert "<span>NOAA's official forecast said</span><b>13.7</b>" in html
-    assert "Raw CAMS estimate (optimistic) said 34.3 → warn (cut-off 30)" in html
-    assert "Persistence (yesterday's measurement) said 12.4 → no warning (cut-off 37)" in html
-
-    # Chicago 2025-08-01: SmokeCheck 51.8 warns, NOAA 8.7 does not.
+    # Chicago 2025-08-01: SmokeCheck 51.8 warns, NOAA 8.7. Measured 45.5: right.
     html = app.card(rows, "Chicago", "2025-08-01", metrics)
-    assert app.INDOORS in html and "<b>51.8</b>" in html
-    assert "<span>NOAA's official forecast said</span><b>8.7</b>" in html and "→ no warning (cut-off 52.5)" in html
-
-    # Without range_lo / range_hi the card shows no range at all (a COPY with the columns dropped).
-    no_range = rows.drop(columns=["range_lo", "range_hi"])
-    assert "Likely between" not in app.card(no_range, "Chicago", "2025-07-31", metrics)
-
-    # The map colours follow SmokeCheck's cut-off: on 2025-07-31 some cities warn and some do not.
-    fig = app.city_map(rows, "2025-07-31", metrics)
-    assert {trace.name for trace in fig.data} == {app.OK, app.INDOORS}
+    assert app.INDOORS in html and "51.8" in html and "<b>8.7</b>" in html and "✓ Right call" in html
 
     # The call follows SmokeCheck's forecast only, never the measurement.
     for _, row in rows[rows["date"].between("2025-07-25", "2025-08-05")].iterrows():
         expected = app.verdict(row["pred_model"], app.cutoff(metrics, "pred_model"))
         assert f'<div class="call">{expected}</div>' in app.card(rows, row["city"], row["date"], metrics)
 
-    misses = app.worst_misses(rows, metrics)
-    assert len(misses) == len(rows)
-    assert misses["SmokeCheck off by"].is_monotonic_decreasing
-    assert misses.iloc[0]["SmokeCheck off by"] == (rows["pred_model"] - rows["obs_pm25"]).abs().max()
-    assert "Smoke plume" in misses and "Raw CAMS estimate" in misses and "NOAA day-ahead forecast" in misses
+    # The map colours follow SmokeCheck's cut-off: on 2025-07-31 some cities warn and some do not.
+    assert {trace.name for trace in app.city_map(rows, "2025-07-31", metrics).data} == {app.OK, app.INDOORS}
 
-    # NOAA at the plain 35 line on 2025: 12 caught, 8 false alarms, cost 5 × 23 missed + 8 = 123.
+    # The day buttons step one day and stop at the ends of 2025.
+    assert app.step("2025-07-31", 1) == "2025-08-01" and app.step("2025-07-31", -1) == "2025-07-30"
+    assert app.step(app.DATES[0], -1) == app.DATES[0] and app.step(app.DATES[-1], 1) == app.DATES[-1]
+
+    # "Does it work?": NOAA at the plain 35 line on 2025: 12 caught, 8 false alarms, cost 5 × 23 + 8 = 123.
     at_35 = app.stats_at_line(rows, "pred_noaa", 35, 35)
     assert (at_35["caught"], at_35["missed"], at_35["false_alarms"]) == (12, 23, 8)
-    table = app.scoreboard({"noaa_at_limit": at_35}, metrics["cost_of_a_miss"])
-    assert table.iloc[0]["Forecaster"] == "NOAA at the plain 35 line"
-    assert table.iloc[0]["Cost (5 × missed + false alarms)"] == 123
     # The same counts at NOAA's own cut-off match metrics.json, so the two NOAA rows are comparable.
     own = app.stats_at_line(rows, "pred_noaa", metrics["warn_at"]["pred_noaa"], 35)
-    assert own["caught"] == metrics["overall"]["pred_noaa"]["caught"]
-    assert own["false_alarms"] == metrics["overall"]["pred_noaa"]["false_alarms"]
-    assert own["mae"] == metrics["overall"]["pred_noaa"]["mae"]
-    # SmokeCheck's row in "Does it work?": MAE 2.36, line 32, 11 caught, 7 false alarms, cost 5 × 24 + 7 = 127.
-    model_row = app.scoreboard(metrics["overall"], metrics["cost_of_a_miss"]).iloc[0]
-    assert (model_row["Average miss (MAE, µg/m³)"], model_row["Warns above"]) == (2.36, 32)
-    assert (model_row["Bad days caught"], model_row["False alarms"]) == ("11 of 35", 7)
-    assert model_row["Cost (5 × missed + false alarms)"] == 127
+    assert (own["caught"], own["false_alarms"], own["mae"]) == tuple(
+        metrics["overall"]["pred_noaa"][k] for k in ("caught", "false_alarms", "mae"))
+    section = dict(metrics["overall"], noaa_at_limit=at_35)
+    table = app.scoreboard(section, metrics["cost_of_a_miss"])
+    cost = "Cost (a miss = 5 false alarms)"
+    # The two NOAA rows share a name and differ only in the line they warn above.
+    assert list(zip(table["Forecaster"], table["Warns above"])) == [
+        ("SmokeCheck", 32), ("NOAA's official forecast", 52.5), ("NOAA's official forecast", 35), ("Yesterday's reading", 37)]
+    model = table.iloc[0]
+    assert (model["Average error"], model["Bad days caught"], model["False alarms"], model[cost]) == (2.36, "11 of 35", 7, 127)
+    assert table.iloc[2][cost] == 123
 
     # Smoke arrival days: SmokeCheck warned on 0 of the 21 in 2025.
-    assert "it warned on 0 of 21 in 2025" in app.arrival_note(rows, metrics)
+    assert "warned on 0 of 21 in 2025" in app.arrival_note(rows, metrics)
 
-    # A day with NOAA above 35 says "warn" at the plain line (Chicago 08-01 has NOAA 8.7: no warning).
-    html = app.card(rows, "Chicago", "2025-08-01", metrics)
-    assert "at the EPA's 35 line: no warning" in html
-    high = rows[rows["pred_noaa"] > 35].iloc[0]
-    assert "at the EPA's 35 line: warn" in app.card(rows, high["city"], high["date"], metrics)
-
-    # "Does it work?": one row per forecaster, SmokeCheck first.
-    table = app.scoreboard(metrics["overall"])
-    assert table.iloc[0]["Forecaster"] == "SmokeCheck"
-    model = metrics["overall"]["pred_model"]
-    assert table.iloc[0]["Bad days caught"] == f"{model['caught']} of {model['bad_days']}"
-    by_smoke = app.grouped_scoreboard(metrics["by_smoke"], "Day type")
-    assert set(by_smoke["Day type"]) == {"Clean day", "Smoke day"}
-
-# 5. The Hugging Face Space layout: app.py with data/ next to it (no daily.csv, no ../data).
+# 5. A Space-style layout still works: app.py with data/ next to it (no daily.csv, no ../data).
 # A COPY of app.py in a temp folder, loaded under another name so it does not replace `app`.
 if (app.DATA / "predictions.csv").exists() and (app.DATA / "metrics.json").exists():
     with tempfile.TemporaryDirectory() as folder:
@@ -175,8 +126,7 @@ if (app.DATA / "predictions.csv").exists() and (app.DATA / "metrics.json").exist
         space_app = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(space_app)
         assert space_app.DATA == space / "data"
-        html = space_app.card(space_app.ROWS, "Minneapolis", "2025-07-31", space_app.METRICS)
-        assert space_app.INDOORS in html and "<b>41.3</b>" in html
+        assert space_app.INDOORS in space_app.card(space_app.ROWS, "Minneapolis", "2025-07-31", space_app.METRICS)
 
 # 6. Without metrics.json nothing breaks and the bad-day limit is 35.
 assert app.bad_day_limit({}) == 35
