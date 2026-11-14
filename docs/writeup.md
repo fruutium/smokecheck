@@ -33,20 +33,20 @@ We started from suggested project 4.3.2 (next-day air quality forecast). Instead
 - **Decision rule:** forecast above 35 µg/m³ (the US EPA 24-hour standard) → "move indoors".
 
 ## Results (2025 test set, never used in training)
-<!-- MAE 3.40 / 3.72 are from the hub's message (Nov 13, 11:09 PM). Re-check every cell against data/metrics.json before submitting. -->
+<!-- Baseline rows copied from data/metrics.json (main 1f73e73, Nov 13). Re-check every cell against the final metrics.json before submitting. -->
 
 | Forecast | MAE (µg/m³) | Smoke days caught (of 35 city-days > 35) | False alarms |
 |---|---|---|---|
-| Baseline: persistence (tomorrow = today) | 3.40 | [ ] | [ ] |
-| Baseline: climatology (typical value for that date) | [ ] | [ ] | [ ] |
-| Baseline: raw CAMS estimate | 3.72 | [ ] | [ ] |
+| Baseline: persistence (tomorrow = today) | 3.40 | 14 | 21 |
+| Baseline: climatology (typical value for that date) | 4.33 | 0 | 0 |
+| Baseline: raw CAMS estimate | 3.72 | 10 | 4 |
 | **SmokeCheck** | [ ] | [ ] | [ ] |
 
 [One sentence: the main finding, whatever it turns out to be, including if we do not beat a baseline.]
 
 **By city and by day type:** [where the model is better and worse: per city, smoke days vs clean days.]
 
-**Why persistence isn't enough.** On July 31, 2025 smoke arrived in Chicago overnight: the day before measured 12.4, so "tomorrow = today" said the air was fine, and monitors measured 65.6.
+**Why persistence isn't enough.** On July 31, 2025 smoke arrived in Chicago overnight: the day before measured 12.4, so "tomorrow = today" said the air was fine, and monitors measured 65.6. All three simple forecasts said "practice outside" that day (persistence 12.4, climatology 11.3, raw CAMS 34.3).
 
 **Where it fails.** [One or two real test days it got wrong, with the numbers, and why we think so. Kit guess to verify: the first day smoke arrives, when yesterday's monitors were still clean.]
 

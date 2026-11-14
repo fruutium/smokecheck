@@ -15,7 +15,7 @@
 **Screen:** the app, opened on Chicago, Thursday July 31, 2025.
 **Say:** "This is SmokeCheck. Pick a city and a day. Here's Chicago on July 31st, 2025, a day our model never saw in training."
 **Do:** point at the verdict card.
-**Say:** "SmokeCheck says [verdict]: it forecast [Y] micrograms, against a limit of 35. The raw CAMS estimate said 34, just under the line. The day before measured 12. The monitors measured 66."
+**Say:** "SmokeCheck says [verdict]: it forecast [Y] micrograms, against a limit of 35. All three simple forecasts said practice outside: yesterday's reading was 12, the typical value for that date is 11, and the raw CAMS estimate said 34, just under the line. The monitors measured 66."
 **Do:** drag the date slider back two days, then forward through the event.
 **Say:** "Dragging through the week, you can watch the smoke arrive and the call change city by city."
 **Do:** switch the city to Milwaukee.
