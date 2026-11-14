@@ -1,3 +1,5 @@
+> **Out of date:** this file, `app/space/README.md` and `app/build_space.sh` describe the old Gradio app. The app is now a FastAPI server (`app/app.py` + `app/index.html`), so they need redoing if a Space is wanted.
+
 # Deploying SmokeCheck as a Hugging Face Space
 
 Nothing here has been run against Hugging Face yet. Creating the Space is public and needs a human yes.

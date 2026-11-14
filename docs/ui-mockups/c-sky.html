@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SmokeCheck: the sky tells you</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Schibsted+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* --h is the one number that drives every sky on the page:
+   0 = clear dusk, 0.5 = exactly at the warning line, 1 = heavy smoke.
+   Registering it as a number lets the small city swatches transition it in plain CSS. */
+@property --h { syntax: '<number>'; inherits: true; initial-value: 0; }
+
+:root {
+  --ink: #f5f2ea;
+  --dim: rgb(245 242 234 / .76);
+  --dark: #06080c;
+  --plate: rgb(5 7 11 / .9);
+  --row: rgb(5 7 11 / .7);
+  --warn: #ffb01f;    /* indoors */
+  --clear: #a8dcff;   /* outside */
+  --grey: #b9bcc2;    /* no forecast yet */
+  --accent: var(--clear);
+  --display: 'Big Shoulders Display', 'Arial Narrow', Impact, sans-serif;
+  --text: 'Schibsted Grotesk', system-ui, sans-serif;
+  --pad: clamp(16px, 3.75vw, 48px);
+}
+body[data-call="in"]   { --accent: var(--warn); }
+body[data-call="wait"] { --accent: var(--grey); }
+
+* { box-sizing: border-box; margin: 0; }
+body {
+  min-height: 100dvh; display: grid; grid-template-rows: auto 1fr auto;
+  font: 400 16px/1.45 var(--text); color: var(--ink); background: #040b20; overflow-x: hidden;
+}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; touch-action: manipulation; }
+button:disabled { opacity: .35; cursor: default; }
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.num { font-family: var(--display); font-variant-numeric: tabular-nums; font-weight: 800; line-height: 1; }
+
+/* ---------- The sky ---------- */
+.sky, .swatch {
+  /* --pa runs 0% to 100% below the warning line, --pb runs 0% to 100% above it.
+     Each colour is mixed clear -> hazy -> heavy smoke with those two amounts. */
+  --pa: calc(clamp(0, var(--h) * 2, 1) * 100%);
+  --pb: calc(clamp(0, var(--h) * 2 - 1, 1) * 100%);
+  --top:  color-mix(in oklab, color-mix(in oklab, #040b20, #16161d var(--pa)), #251810 var(--pb));
+  --mid:  color-mix(in oklab, color-mix(in oklab, #0d2c60, #40383a var(--pa)), #573a22 var(--pb));
+  --low:  color-mix(in oklab, color-mix(in oklab, #3f78bd, #907458 var(--pa)), #a56c34 var(--pb));
+  --hor:  color-mix(in oklab, color-mix(in oklab, #a9c8e4, #b7946a var(--pa)), #b9783c var(--pb));
+  --sun:  color-mix(in oklab, color-mix(in oklab, #fff1d6, #f27a45 var(--pa)), #d2331d var(--pb));
+  --far:  color-mix(in oklab, color-mix(in oklab, #06101f, #5d4f44 var(--pa)), #8c6035 var(--pb));
+  --near: color-mix(in oklab, color-mix(in oklab, #02060e, #14100d var(--pa)), #291a0f var(--pb));
+}
+.sky {
+  position: fixed; inset: 0; z-index: 0;
+  background: linear-gradient(var(--top) 0%, var(--mid) 45%, var(--low) 72%, var(--hor) 83%);
+  transition: filter 1s ease;
+}
+body[data-state="waiting"] .sky,
+body[data-state="waiting"] .city .swatch { filter: grayscale(1) brightness(.8); }
+
+/* A few stars, drawn as shadows of one dot. They go out as the haze comes in. */
+.stars {
+  position: absolute; top: 0; left: 0; width: 2px; height: 2px; border-radius: 50%;
+  opacity: calc(1 - clamp(0, var(--h) * 2, 1) * 1.6);
+  box-shadow: 30vw 3vh #fff, 47vw 2.5vh #dfe8ff, 57vw 12vh #fff, 62vw 20vh #fff, 68vw 9vh #dfe8ff,
+              70vw 31vh #fff, 59vw 38vh #dfe8ff, 65vw 46vh #fff, 84vw 3vh #fff, 93vw 5vh #fff, 98vw 21vh #dfe8ff;
+}
+.field { position: absolute; left: 0; bottom: 0; width: 100%; height: 30vh; overflow: visible; }
+.field .glow { opacity: calc(1 - clamp(0, var(--h) * 2, 1)); }           /* clear air: the sun glows */
+.field .sun  { fill: var(--sun); }                                        /* smoke: a flat red disc */
+.field .far  { fill: var(--far); }                                        /* far shapes sink into the haze */
+.field .ground { fill: var(--near); }
+.field .lines { stroke: var(--ink); stroke-width: 2.5; opacity: .13; fill: none; }
+.field #hz stop { stop-color: var(--hor); }
+.field .hz { opacity: calc(clamp(0, var(--h) * 2, 1) * .5 + clamp(0, var(--h) * 2 - 1, 1) * .45); }  /* the horizon fades out */
+.field .post { fill: color-mix(in oklab, var(--near), var(--hor) calc(clamp(0, var(--h) * 2 - 1, 1) * 40%)); }
+
+/* Small copies of the same sky, one per city */
+.swatch {
+  display: block; position: relative; border-radius: 2px; transition: --h .8s ease;
+  background: linear-gradient(var(--mid) 0%, var(--low) 58%, var(--hor) 76%, var(--near) 76%);
+}
+.swatch::after {
+  content: ''; position: absolute; right: 22%; bottom: 34%; width: 16%; aspect-ratio: 1;
+  border-radius: 50%; background: var(--sun);
+}
+.scrim { position: fixed; inset: 0; z-index: 0; background: #05070b; opacity: 0; transition: opacity .4s ease; pointer-events: none; }
+body[data-view="results"] .scrim { opacity: .84; }
+
+/* ---------- Top bar ---------- */
+.bar { position: relative; z-index: 1; display: flex; align-items: center; gap: 8px 28px; padding: 14px var(--pad) 0; }
+.mark { font: 800 28px/1 var(--display); text-transform: uppercase; letter-spacing: .01em; }
+.views { display: flex; gap: 4px; }
+.views button { min-height: 44px; padding: 8px 16px; border-radius: 4px; font-weight: 500; }
+.views button[aria-selected="true"] { background: var(--ink); color: var(--dark); font-weight: 700; }
+.preview { margin-left: auto; min-height: 44px; padding: 8px 14px; border-radius: 4px; background: var(--row); font-size: 14px; display: none; }
+.preview[aria-pressed="true"] { background: var(--ink); color: var(--dark); }
+body[data-view="tomorrow"] .preview { display: block; }
+
+/* ---------- The call ---------- */
+main { position: relative; z-index: 1; padding: 16px var(--pad) 0; }
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) 288px; gap: 24px 48px; align-items: start; }
+body[data-view="results"] .stage, body:not([data-view="results"]) .results { display: none; }
+
+.where { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-height: 44px; font-size: 22px; font-weight: 500; }
+.where b { font-weight: 700; }
+.step { display: none; width: 44px; height: 44px; place-items: center; border-radius: 4px; background: var(--row); }
+body[data-view="test"] .step { display: grid; }
+
+.verdict { margin-top: 4px; font-family: var(--display); text-transform: uppercase; }
+.mask { display: block; overflow: hidden; }
+.lead { display: flex; align-items: center; gap: 14px; font-size: clamp(32px, 4.4vw, 56px); font-weight: 800; line-height: 1.1; }
+.word { display: block; padding-top: .04em; font-size: clamp(100px, 15vw, 196px); font-weight: 900; line-height: .86; }
+.sign { flex: none; width: .82em; height: .82em; }
+.sign svg { display: none; width: 100%; height: 100%; }
+body[data-call="in"] .s-in, body[data-call="out"] .s-out, body[data-call="wait"] .s-wait { display: block; }
+.made { margin-top: 8px; font-size: 18px; }
+.made:empty { display: none; }
+
+.plate {
+  margin-top: 14px; max-width: 860px; padding: 14px 22px 12px; border-radius: 4px; background: var(--plate);
+  display: grid; grid-template-columns: 1.15fr 1fr 1.3fr; column-gap: 28px;
+}
+body[data-state="waiting"] .plate { display: none; }
+body[data-view="tomorrow"] .plate { width: fit-content; grid-template-columns: auto auto; column-gap: 56px; }
+.fact span { display: block; font-size: 15px; color: var(--dim); }
+.fact b { display: block; font-size: clamp(44px, 5.6vw, 72px); }
+.fact.main b { color: var(--accent); }
+
+/* Test run only. The scale uses the sky's own colours: blue is clear, brown is smoke. */
+.scale {
+  grid-column: 1 / -1; position: relative; height: 10px; margin: 20px 0 28px; border-radius: 2px;
+  background: linear-gradient(90deg, #3f78bd 4%, #907458 35.6%, #a56c34 67%);   /* 4, 32 and 60 on a 0 to 90 scale */
+}
+
+.scale .line { position: absolute; left: 35.56%; top: -7px; bottom: -7px; width: 3px; margin-left: -1.5px; background: var(--ink); }
+.scale .pin { position: absolute; left: calc(var(--x) * 1%); translate: -50% 0; }
+.scale .tri { top: -15px; }
+.scale .ring { top: -3px; }
+.scale .dia { top: 15px; }
+.tri  { width: 0; height: 0; border: 8px solid transparent; border-top: 12px solid var(--ink); border-bottom: 0; }
+.ring { width: 16px; height: 16px; border: 3px solid var(--ink); border-radius: 50%; background: var(--dark); }
+.dia  { width: 11px; height: 11px; background: var(--ink); rotate: 45deg; }
+.legend { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 2px 20px; font-size: 14px; color: var(--dim); }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.legend .bar32 { width: 3px; height: 14px; background: var(--ink); }
+.legend .unit { margin-left: auto; }
+body:not([data-view="test"]) .only-test { display: none; }
+
+/* Test run only: was it right? */
+.check {
+  display: none; margin-top: 8px; max-width: 860px; padding: 12px 22px; border-radius: 4px; background: var(--plate);
+  grid-template-columns: auto auto 1fr; gap: 12px 28px; align-items: center;
+}
+body[data-view="test"] .check { display: grid; }
+.check h2 { font: 800 28px/1 var(--display); text-transform: uppercase; }
+.real { display: flex; align-items: center; gap: 12px; }
+.real .swatch { width: 68px; height: 50px; flex: none; transition: none; }   /* this one is redrawn every frame */
+.real b { font-size: 52px; }
+.real span { font-size: 14px; color: var(--dim); line-height: 1.3; }
+.stamp { display: flex; align-items: center; gap: 12px; width: fit-content; transform-origin: left center; }
+.stamp svg { flex: none; width: 44px; height: 44px; display: none; }
+.stamp[data-ok="true"] .s-yes, .stamp[data-ok="false"] .s-no { display: block; }
+.stamp b { display: block; font: 800 36px/1 var(--display); text-transform: uppercase; white-space: nowrap; }
+.stamp span { font-size: 14px; color: var(--dim); }
+
+/* ---------- Six cities ---------- */
+.cities h2 { display: flex; align-items: center; min-height: 44px; font-size: 16px; font-weight: 500; }
+.city {
+  display: grid; grid-template-columns: 60px 1fr auto; align-items: center; gap: 12px; width: 100%; min-height: 56px;
+  margin-bottom: 6px; padding: 6px 14px 6px 6px; border-radius: 4px; background: var(--row); text-align: left;
+}
+.city[aria-pressed="true"] { background: var(--ink); color: var(--dark); }
+.city .swatch { width: 60px; height: 44px; }
+.city strong { display: block; line-height: 1.2; }
+.city small { display: block; font-size: 13px; opacity: .82; }
+.city b { font-size: 32px; }
+
+/* ---------- Does it work? ---------- */
+.results { max-width: 1120px; }
+.results h1 { max-width: 20ch; font: 900 clamp(38px, 5.4vw, 68px)/.96 var(--display); text-transform: uppercase; text-wrap: balance; }
+.results .but { margin-top: 10px; max-width: 62ch; font-size: 21px; }
+table { width: 100%; margin-top: 20px; border-collapse: separate; border-spacing: 0 4px; font-size: 18px; }
+th, td { padding: 12px 18px; text-align: right; background: var(--plate); }
+th:first-child { text-align: left; }
+thead th { padding-block: 6px; background: none; font-size: 14px; font-weight: 500; color: var(--dim); }
+tbody th { font-weight: 700; }
+tr.us th, tr.us td { background: var(--ink); color: var(--dark); }   /* the SmokeCheck row */
+.best { font-weight: 700; }
+.best::after { content: 'best'; margin-left: 8px; padding: 1px 6px; border-radius: 2px; background: var(--ink); color: var(--dark); font-size: 12px; }
+tr.us .best::after { background: var(--dark); color: var(--ink); }
+.sums { margin-top: 6px; font-size: 14px; color: var(--dim); }
+.weak { display: flex; gap: 12px; align-items: flex-start; margin-top: 16px; padding: 12px 18px; border-radius: 4px; background: var(--plate); font-size: 19px; }
+.weak svg { flex: none; width: 28px; height: 28px; margin-top: 1px; }
+.weak b { color: var(--warn); }
+
+.foot { position: relative; z-index: 1; padding: 12px var(--pad) 14px; font-size: 14px; }
+
+/* ---------- Phone ---------- */
+@media (max-width: 760px) {
+  .bar { flex-wrap: wrap; }
+  .views { order: 3; width: 100%; }
+  .views button { flex: 1; padding-inline: 4px; font-size: 14px; white-space: nowrap; }
+  .stage { grid-template-columns: minmax(0, 1fr); }
+  .where { font-size: 18px; }
+  .word { font-size: 27vw; }
+  .made { font-size: 16px; }
+  .plate { padding: 12px 14px; column-gap: 12px; grid-template-columns: repeat(3, 1fr); }
+  body[data-view="tomorrow"] .plate { column-gap: 32px; }
+  .fact span { font-size: 13px; line-height: 1.25; min-height: 2.5em; }
+  .legend .unit { margin-left: 0; }
+  .check { grid-template-columns: 1fr; padding: 12px 14px; }
+  .city-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 6px; }   /* one column on a phone, two when there is room */
+  .city { margin: 0; min-height: 52px; }
+  .city .swatch { height: 40px; }
+  .city b { font-size: 28px; }
+  /* the table turns into one block per forecast, each number with its own label */
+  table, tbody, tr, th, td { display: block; }
+  thead { display: none; }
+  tbody tr { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 8px; background: var(--plate); }
+  tbody th { grid-column: 1 / -1; padding-bottom: 2px; }
+  td { padding: 6px 18px 10px; text-align: left; background: none; }
+  td::before { content: attr(data-l); display: block; font-size: 12px; font-weight: 400; opacity: .8; }
+  tr.us { background: var(--ink); }
+  .best::after { margin-left: 5px; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::after { transition: none !important; } }
+</style>
+</head>
+<body data-view="tomorrow" data-state="ok" data-call="out">
+
+<!-- Backdrop: tomorrow's sky over the practice field -->
+<div class="sky" id="sky" aria-hidden="true">
+  <div class="stars"></div>
+  <!-- xMaxYMax keeps the goalposts and sun in view when a phone crops the picture -->
+  <svg class="field" viewBox="0 0 1600 300" preserveAspectRatio="xMaxYMax slice">
+    <defs>
+      <linearGradient id="hz" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-opacity="0"/><stop offset=".45" stop-opacity="1"/><stop offset="1" stop-opacity=".1"/>
+      </linearGradient>
+      <radialGradient id="glow">
+        <stop offset="0" stop-color="#ffe2b0" stop-opacity=".6"/><stop offset="1" stop-color="#ffe2b0" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <circle class="glow" cx="1280" cy="52" r="200" fill="url(#glow)"/>
+    <circle class="sun" cx="1280" cy="52" r="25"/>
+    <g class="far">
+      <path d="M0 140V116Q60 104 130 112T290 108T470 112T700 118V140Z"/>
+      <path d="M990 140V114Q1060 106 1130 112T1380 112T1600 108V140Z"/>
+      <path d="M700 140V112L990 70V140Z"/><rect x="930" y="54" width="60" height="16"/>   <!-- bleachers and press box -->
+      <path d="M138 140V16h-18V4h40v12h-18v124ZM558 140V16h-18V4h40v12h-18v124ZM1088 140V16h-18V4h40v12h-18v124ZM1498 140V16h-18V4h40v12h-18v124Z"/>   <!-- light poles -->
+    </g>
+    <path class="ground" d="M0 300V138Q800 126 1600 138V300Z"/>
+    <path class="lines" d="M700 300L1180 142M1860 300L1380 142M1150 152h260M1075 177h410M955 217h650M780 275h820"/>
+    <rect class="hz" width="1600" height="300" fill="url(#hz)"/>
+    <path class="post" d="M1277.5 138V94h-34.5V12h3.5v78h67V12h3.5v82h-34.5v44Z"/>   <!-- goalposts -->
+  </svg>
+</div>
+<div class="scrim"></div>
+
+<header class="bar">
+  <span class="mark">SmokeCheck</span>
+  <nav class="views" role="tablist" aria-label="Views">
+    <button role="tab" data-view="tomorrow">Tomorrow</button>
+    <button role="tab" data-view="test">2025 test run</button>
+    <button role="tab" data-view="results">Does it work?</button>
+  </nav>
+  <button class="preview" id="preview" aria-pressed="false">Preview: no forecast yet</button>
+</header>
+
+<main>
+  <div class="stage">
+    <section class="call">
+      <p class="where">
+        <b id="city">Minneapolis</b><span aria-hidden="true">·</span>
+        <button class="step" id="prev" aria-label="Previous day"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12.5 4 6.5 10l6 6"/></svg></button>
+        <span id="when">Tomorrow</span>
+        <button class="step" id="next" aria-label="Next day"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7.5 4l6 6-6 6"/></svg></button>
+      </p>
+
+      <!-- Shape and words carry the call, not only colour: solid square = indoors, open ring = outside, dashed ring = waiting -->
+      <h1 class="verdict" aria-live="polite">
+        <span class="mask"><span class="lead">
+          <span class="sign" aria-hidden="true">
+            <svg class="s-in" viewBox="0 0 32 32"><rect width="32" height="32" rx="3" fill="#ffb01f"/><path d="M7 25V14l9-7 9 7v11Z" fill="#06080c"/></svg>
+            <svg class="s-out" viewBox="0 0 32 32" fill="none" stroke="#a8dcff" stroke-width="3"><circle cx="16" cy="16" r="14"/><circle cx="16" cy="13.5" r="4" fill="#a8dcff" stroke="none"/><path d="M8 22h16"/></svg>
+            <svg class="s-wait" viewBox="0 0 32 32" fill="none" stroke="#b9bcc2" stroke-width="3"><circle cx="16" cy="16" r="14" stroke-dasharray="5 4"/><path d="M16 9v8l5 3"/></svg>
+          </span>
+          <span id="lead">OK to practice</span>
+        </span></span>
+        <span class="mask"><span class="word" id="word">outside</span></span>
+      </h1>
+      <p class="made" id="made"></p>
+
+      <div class="plate">
+        <p class="fact main"><span>Smoke forecast</span><b class="num" id="n-model">0.0</b></p>
+        <p class="fact"><span>Indoors above</span><b class="num">32</b></p>
+        <p class="fact only-test"><span>NOAA official forecast</span><b class="num" id="n-noaa">0.0</b></p>
+        <div class="scale only-test" aria-hidden="true">
+          <i class="line"></i>
+          <i class="pin tri" id="p-model"></i><i class="pin ring" id="p-noaa"></i><i class="pin dia" id="p-measured"></i>
+        </div>
+        <p class="legend only-test">
+          <span><i class="tri"></i>SmokeCheck</span>
+          <span><i class="ring"></i>NOAA</span>
+          <span><i class="dia"></i>Measured</span>
+          <span><i class="bar32"></i>Line at 32</span>
+          <span class="unit">PM2.5 in µg/m³, daily average, 0 to 90</span>
+        </p>
+      </div>
+
+      <div class="check">
+        <h2>Was it right?</h2>
+        <p class="real">
+          <i class="swatch" id="real-sky" aria-hidden="true"></i>
+          <b class="num" id="n-measured">0.0</b>
+          <span>Measured.<br>Bad day: above 35.</span>
+        </p>
+        <p class="stamp" id="stamp" data-ok="true">
+          <svg class="s-yes" viewBox="0 0 32 32" fill="none" stroke="#a8dcff" stroke-width="3"><circle cx="16" cy="16" r="14"/><path d="M9.5 16.5l4.5 4.5 8.5-9.5"/></svg>
+          <svg class="s-no" viewBox="0 0 32 32"><rect width="32" height="32" rx="3" fill="#ffb01f"/><path d="M10 10l12 12M22 10 10 22" stroke="#06080c" stroke-width="3.5"/></svg>
+          <span><b id="stamp-title"></b><span id="stamp-note"></span></span>
+        </p>
+      </div>
+    </section>
+
+    <aside class="cities" aria-label="All six cities">
+      <h2 id="cities-title">All six cities</h2>
+      <div class="city-list" id="city-list"></div>
+    </aside>
+  </div>
+
+  <section class="results">
+    <h1>26% lower error than NOAA's official forecast.</h1>
+    <p class="but">But its warnings were slightly worse than reading NOAA at 35: cost 127 vs 123.</p>
+    <table id="table"></table>
+    <p class="sums">2025, a year the model never saw. 2,190 city-days, 35 bad days. Cost = 5 per missed bad day + 1 per false alarm. Lower is better.</p>
+    <p class="weak">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3 31 29H1Z" fill="#ffb01f"/><path d="M16 12v9M16 24v2.5" stroke="#06080c" stroke-width="3"/></svg>
+      <span><b>Weak spot.</b> SmokeCheck caught 0 of the 21 days when smoke first arrived. It catches smoke that lingers (11 of 14).</span>
+    </p>
+  </section>
+</main>
+
+<footer class="foot">A prototype, not medical or health advice.</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script>
+const LINE = 32;      // SmokeCheck warns when its forecast is above this
+const BAD = 35;       // a bad day: measured above the EPA 24-hour limit
+const TOMORROW = 3;   // mockup only: Jul 31, 2025 stands in for tomorrow
+
+// Real rows from data/predictions.csv (split == test). Each day is [measured, NOAA, SmokeCheck].
+const DATA = {
+  days: ['2025-07-28', '2025-07-29', '2025-07-30', '2025-07-31', '2025-08-01', '2025-08-02', '2025-08-03', '2025-08-04'],
+  cities: {
+    'Chicago':    [[8.216, 13.76, 8.41], [9.405, 8.8, 8.0], [12.391, 9.29, 9.22], [65.648, 13.7, 15.31], [45.544, 8.7, 51.75], [26.192, 11.41, 25.99], [31.873, 25.2, 17.62], [20.773, 28.46, 24.68]],
+    'Milwaukee':  [[6.321, 14.62, 5.53], [8.554, 8.4, 6.36], [32.287, 16.17, 10.8], [83.729, 13.4, 28.08], [35.464, 9.5, 57.08], [47.443, 26.31, 18.67], [62.517, 40.4, 33.12], [36.346, 42.14, 39.67]],
+    'Madison':    [[5.064, 9.3, 4.1], [9.93, 5.0, 5.65], [28.589, 12.73, 11.62], [81.973, 15.6, 26.82], [35.817, 10.5, 59.76], [34.174, 33.01, 20.38], [38.943, 43.5, 25.91], [37.476, 39.88, 28.41]],
+    'Minneapolis':[[6.547, 8.4, 4.14], [9.221, 4.7, 6.37], [50.571, 15.25, 11.59], [69.063, 18.7, 41.26], [75.34, 30.2, 46.27], [42.1, 40.81, 48.7], [26.351, 41.5, 23.97], [29.215, 42.18, 20.33]],
+    'Detroit':    [[6.884, 12.1, 8.51], [8.338, 13.2, 7.62], [18.977, 14.97, 10.74], [45.875, 15.3, 18.48], [14.251, 4.0, 35.46], [9.894, 12.51, 13.2], [30.453, 20.4, 18.04], [53.817, 25.56, 30.24]],
+    'St. Louis':  [[8.519, 8.24, 7.37], [8.321, 8.6, 9.54], [7.435, 10.65, 11.77], [19.409, 6.4, 12.59], [41.924, 10.9, 24.83], [18.486, 7.01, 29.83], [6.917, 16.0, 11.65], [5.719, 16.2, 13.83]],
+  },
+};
+
+// "Does it work?" table. A trailing * marks the best value in its column.
+const HEAD = ['Forecast', 'Avg error', 'Warns above', 'Caught', 'False alarms', 'Cost'];
+const RESULTS = [
+  ['SmokeCheck', '2.36*', '32', '11 of 35', '7', '127'],
+  ['NOAA official, its own line', '3.20', '52.5', '2 of 35', '1*', '166'],
+  ['NOAA official, at 35', '3.20', '35', '12 of 35*', '8', '123*'],
+  ["Yesterday's reading", '3.40', '37', '12 of 35*', '19', '134'],
+];
+
+const CALLS = {
+  in:   ['Move practice', 'indoors'],
+  out:  ['OK to practice', 'outside'],
+  wait: ['No forecast yet', 'waiting'],
+};
+
+const $ = (s) => document.querySelector(s);
+const CALM = !window.gsap || matchMedia('(prefers-reduced-motion: reduce)').matches;   // no animation: set final values
+const state = { view: 'tomorrow', city: 'Minneapolis', day: TOMORROW, waiting: false };
+const shown = { model: 0, noaa: 0, measured: 0 };   // the numbers on screen right now; they are what gets animated
+
+// Turn a PM2.5 number into the sky's haze amount (the CSS variable --h).
+// Below the line the curve is slow at first so clean days stay clearly blue, then the sky turns fast near 32.
+function haze(pm) {
+  if (pm <= LINE) return 0.5 * Math.pow(Math.max(pm - 4, 0) / (LINE - 4), 1.6);
+  return Math.min(0.5 + 0.5 * (pm - LINE) / (60 - LINE), 1);
+}
+
+function outcome(model, measured) {
+  const warned = model > LINE, bad = measured > BAD;
+  if (warned && bad)   return { ok: true,  title: 'Right call', note: 'It warned, and the air was bad.' };
+  if (!warned && !bad) return { ok: true,  title: 'Right call', note: 'No warning, and the air was fine.' };
+  if (bad)             return { ok: false, title: 'Missed a bad day', note: 'No warning, but the air was bad.' };
+  return { ok: false, title: 'False alarm', note: 'It warned, but the air was fine.' };
+}
+
+const dayLabel = (i) => new Date(DATA.days[i] + 'T12:00:00')
+  .toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+// ---------- Build the parts that come from data ----------
+const cityButtons = Object.keys(DATA.cities).map((name) => {
+  const el = document.createElement('button');
+  el.className = 'city';
+  el.innerHTML = `<i class="swatch"></i><span><strong>${name}</strong><small></small></span><b class="num"></b>`;
+  el.onclick = () => { state.city = name; render(); };
+  $('#city-list').append(el);
+  return { name, el, sky: el.querySelector('.swatch'), call: el.querySelector('small'), num: el.querySelector('b') };
+});
+
+$('#table').innerHTML =
+  `<thead><tr>${HEAD.map((h) => `<th scope="col">${h}</th>`).join('')}</tr></thead><tbody>` +
+  RESULTS.map((row, r) => `<tr class="${r ? '' : 'us'}"><th scope="row">${row[0]}</th>` +
+    row.slice(1).map((v, c) => `<td data-l="${HEAD[c + 1]}">${v.endsWith('*') ? `<span class="best">${v.slice(0, -1)}</span>` : v}</td>`).join('') +
+    '</tr>').join('') + '</tbody>';
+
+// ---------- Draw the current state ----------
+function render() {
+  const test = state.view === 'test';
+  const waiting = state.view === 'tomorrow' && state.waiting;
+  const i = test ? state.day : TOMORROW;
+  const [measured, noaa, model] = DATA.cities[state.city][i];
+
+  document.body.dataset.view = state.view;
+  document.body.dataset.state = waiting ? 'waiting' : 'ok';
+  document.querySelectorAll('.views button').forEach((b) => b.setAttribute('aria-selected', b.dataset.view === state.view));
+  $('#preview').setAttribute('aria-pressed', state.waiting);
+  if (state.view === 'results') return;
+
+  $('#city').textContent = state.city;
+  $('#when').textContent = test ? dayLabel(i) + ', 2025' : 'Tomorrow, ' + dayLabel(i);
+  $('#made').textContent = test ? '' : waiting ? 'Updating…' : 'Forecast made Saturday at 7:12 PM';
+  $('#cities-title').textContent = 'All six cities, ' + (test ? dayLabel(i) : 'tomorrow');
+  $('#prev').disabled = i === 0;
+  $('#next').disabled = i === DATA.days.length - 1;
+
+  for (const c of cityButtons) {
+    const pm = DATA.cities[c.name][i][2];
+    c.el.setAttribute('aria-pressed', c.name === state.city);
+    c.sky.style.setProperty('--h', waiting ? 0.3 : haze(pm));
+    c.call.textContent = waiting ? 'Waiting' : pm > LINE ? 'Indoors' : 'Outside';
+    c.num.textContent = waiting ? '' : pm.toFixed(1);
+  }
+
+  const o = outcome(model, measured);
+  $('#stamp').dataset.ok = o.ok;
+  $('#stamp-title').textContent = o.title;
+  $('#stamp-note').textContent = o.note;
+
+  if (!waiting) return go({ model, noaa, measured });
+  tween?.kill();
+  if (CALM) applyCall('wait');
+  else tween = swapCall(gsap.timeline(), 'wait', 0);
+}
+
+// ---------- Motion ----------
+// Each change builds ONE timeline: the three numbers count to their new values, the verdict words swap at the
+// moment the forecast crosses the line, and (test run) the "Was it right?" stamp lands at the end.
+// Every frame, paint() redraws the digits, the scale pins and the sky from the numbers, so the sky is always
+// the sky of the number you are reading. Keeping it all in one timeline means nothing can be left half done.
+const LINES = ['.verdict .lead', '.verdict .word'];
+let tween, shownCall;
+
+function go(target) {
+  const call = target.model > LINE ? 'in' : 'out';
+  tween?.kill();
+  if (CALM) { Object.assign(shown, target); paint(); applyCall(call); return; }
+  const first = shownCall === undefined;   // first load: the sky starts clear and the forecast rolls in
+  const seconds = first ? 2 : Math.abs(target.model - shown.model) > 0.05 ? 1.5 : 0.3;
+  // p = how far through the count the number passes 32. The count uses a sine ease, so the time has an exact formula.
+  const p = (LINE - shown.model) / (target.model - shown.model);
+  const cross = p > 0 && p < 1 ? seconds * Math.acos(1 - 2 * p) / Math.PI : 0;
+  tween = gsap.timeline()
+    .to(shown, { ...target, duration: seconds, ease: 'sine.inOut', onUpdate: paint }, 0)
+    .fromTo('#stamp', { autoAlpha: 0, scale: 1.08 }, { autoAlpha: 1, scale: 1, duration: 0.35, ease: 'power3.out' }, seconds);
+  swapCall(tween, call, first ? seconds - 0.3 : cross);
+}
+
+function paint() {
+  $('#n-model').textContent = shown.model.toFixed(1);
+  $('#n-noaa').textContent = shown.noaa.toFixed(1);
+  $('#n-measured').textContent = shown.measured.toFixed(1);
+  $('#sky').style.setProperty('--h', haze(shown.model));
+  $('#real-sky').style.setProperty('--h', haze(shown.measured));
+  for (const k of ['model', 'noaa', 'measured']) $('#p-' + k).style.setProperty('--x', Math.min(shown[k] / 90 * 100, 100));
+}
+
+function applyCall(call) {
+  shownCall = call;
+  document.body.dataset.call = call;   // CSS picks the icon and the accent colour from this
+  $('#lead').textContent = CALLS[call][0];
+  $('#word').textContent = CALLS[call][1];
+}
+
+// Add the verdict change to a timeline at time `at`: the old words slide up and out, the new words rise in.
+function swapCall(tl, call, at) {
+  if (call === shownCall) return tl.to(LINES, { yPercent: 0, duration: 0.25 }, 0);   // also recovers an interrupted swap
+  const rise = { yPercent: 0, duration: 0.6, ease: 'power4.out', stagger: 0.07 };
+  if (shownCall === undefined) {   // first load: nothing to slide out, the words just rise in
+    applyCall(call);
+    return tl.fromTo(LINES, { yPercent: 110 }, rise, at);
+  }
+  return tl.to(LINES, { yPercent: -110, duration: 0.18, ease: 'power2.in' }, at)
+    .call(applyCall, [call], at + 0.18)
+    .fromTo(LINES, { yPercent: 110 }, { ...rise, immediateRender: false }, at + 0.18);
+}
+
+function setView(view) {
+  const from = state.view;
+  state.view = view;
+  render();
+  if (CALM || from === view) return;
+  const rise = (targets) => gsap.fromTo(targets, { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, duration: 0.45, ease: 'power3.out', stagger: 0.05 });
+  if (view === 'results') rise('.results > :not(table), .results tbody tr');
+  else if (from === 'results') rise('.call > *, .cities');
+  else if (view === 'test') rise('.check');
+}
+
+function stepDay(by) {
+  const next = state.day + by;
+  if (state.view !== 'test' || next < 0 || next >= DATA.days.length) return;
+  state.day = next;
+  render();
+}
+
+// ---------- Wiring ----------
+document.querySelectorAll('.views button').forEach((b) => { b.onclick = () => setView(b.dataset.view); });
+$('#prev').onclick = () => stepDay(-1);
+$('#next').onclick = () => stepDay(1);
+$('#preview').onclick = () => { state.waiting = !state.waiting; render(); };
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowLeft') stepDay(-1);
+  if (e.key === 'ArrowRight') stepDay(1);
+});
+
+// Optional deep link for demos, for example #test/Chicago/4 or #results or #waiting
+const [hView, hCity, hDay] = decodeURIComponent(location.hash.slice(1)).split('/');
+if (hView === 'waiting') state.waiting = true;
+else if (['tomorrow', 'test', 'results'].includes(hView)) state.view = hView;
+if (DATA.cities[hCity]) state.city = hCity;
+if (DATA.days[hDay]) state.day = +hDay;
+
+// Self-check: the four demo days in the brief must come out as stated.
+const says = (city, i) => outcome(DATA.cities[city][i][2], DATA.cities[city][i][0]).title;
+console.assert(says('Minneapolis', 3) === 'Right call' && says('Chicago', 3) === 'Missed a bad day' &&
+  says('Chicago', 4) === 'Right call' && says('Milwaukee', 3) === 'Missed a bad day', 'demo days do not match the brief');
+
+render();
+if (!CALM) {
+  gsap.ticker.lagSmoothing(0);   // after a stall (hidden tab, headless screenshot) jump to the right moment instead of lagging behind
+  gsap.from('.city', { autoAlpha: 0, x: 16, duration: 0.5, ease: 'power3.out', stagger: 0.05, delay: 0.2 });
+}
+</script>
+</body>
+</html>

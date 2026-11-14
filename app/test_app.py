@@ -1,10 +1,13 @@
 """Plain checks for app.py. Run:  .venv/bin/python app/test_app.py"""
+import asyncio
 import importlib.util
+import json
 import shutil
 import tempfile
 from pathlib import Path
 
 import pandas as pd
+from fastapi import HTTPException
 
 import app
 
@@ -36,10 +39,10 @@ def check_no_forecast_yet(rows, metrics):
     assert set(rows["split"]) == {"test"}
     assert len(rows) == 6 * 365
     assert rows["pred_model"].isna().all()
-    html = app.card(rows, "Chicago", "2025-07-31", metrics)
-    assert "<b>65.6</b>" in html  # measured 65.648
-    assert app.NOT_READY in html and app.OK not in html and app.INDOORS not in html
-    assert len(app.city_map(rows, "2025-07-31", metrics).data) == 1  # one grey group, no fake colors
+    v = app.plain(app.replay_view(rows, "Chicago", "2025-07-31", metrics))
+    assert v["measured"] == 65.6  # measured 65.648
+    assert v["call"] == app.NOT_READY and v["forecast"] is None and v["result"] == "–"
+    assert set(app.map_points(rows, "2025-07-31", metrics)["call"]) == {app.NOT_READY}  # one grey group, no fake colors
 
 
 # 2. The not-ready path: a COPY of predictions.csv with pred_model dropped (never writes into data/).
@@ -49,17 +52,17 @@ if (app.DATA / "predictions.csv").exists():
             Path(folder) / "predictions.csv", index=False)
         check_no_forecast_yet(app.load_rows(Path(folder)), app.METRICS)
 
-# 3. Only daily.csv: a temp folder with a copy of it and nothing else. No NOAA column: no NOAA chip.
+# 3. Only daily.csv: a temp folder with a copy of it and nothing else. No NOAA column: no NOAA number (the page hides it).
 with tempfile.TemporaryDirectory() as folder:
     shutil.copy(app.DATA / "daily.csv", folder)
     rows = app.load_rows(Path(folder))
     assert app.load_metrics(Path(folder)) == {}
 check_no_forecast_yet(rows, {})
-assert "NOAA" not in app.card(rows, "Chicago", "2025-07-31", {})
+assert app.plain(app.replay_view(rows, "Chicago", "2025-07-31", {}))["noaa"] is None
 
-# A city/day that is not in the file shows words, not a crash and not 0.
-html = app.card(rows, "Chicago", "2030-01-01", {})
-assert "no measurement" in html and app.NOT_READY in html
+# A city/day that is not in the file is missing values (the page writes "No measurement"), not a crash and not 0.
+v = app.plain(app.replay_view(rows, "Chicago", "2030-01-01", {}))
+assert v["measured"] is None and v["bad_day"] is None and v["call"] == app.NOT_READY
 
 # 4. The real files, on the demo days.
 if (app.DATA / "predictions.csv").exists() and (app.DATA / "metrics.json").exists():
@@ -68,18 +71,31 @@ if (app.DATA / "predictions.csv").exists() and (app.DATA / "metrics.json").exist
 
     # The opening view, Minneapolis 2025-07-31: SmokeCheck 41.3 is above 32, so it warns. NOAA 18.7. Measured 69.1.
     assert (app.START_CITY, app.START_DATE) == ("Minneapolis", "2025-07-31")
-    html = app.card(rows, "Minneapolis", "2025-07-31", metrics)
-    assert app.INDOORS in html and "Smoke forecast 41.3 · indoors above 32" in html
-    assert "practice on Thursday, July 31, 2025" in html
-    assert "<b>69.1</b> a bad day" in html and "<b>18.7</b>" in html and "✓ Right call" in html
+    # These go through the /api/test-run answer, turned into JSON text and back like the browser gets it.
+    day = json.loads(json.dumps(app.test_run("2025-07-31")))
+    v = day["cities"]["Minneapolis"]
+    assert (v["call"], v["forecast"], v["warn_at"], v["date"]) == (app.INDOORS, 41.3, 32, "2025-07-31")
+    assert (v["measured"], v["bad_day"], v["noaa"], v["result"]) == (69.1, True, 18.7, "✓ Right call")
+    v = day["cities"]["Chicago"]
+    assert (v["call"], v["forecast"], v["measured"], v["result"]) == (app.OK, 15.3, 65.6, "✗ Missed a bad day")
 
     # Milwaukee 2025-07-31: SmokeCheck 28.1 is under 32, so it says outside, but 83.7 was measured: a miss.
-    html = app.card(rows, "Milwaukee", "2025-07-31", metrics)
-    assert app.OK in html and "28.1" in html and "<b>83.7</b>" in html and "✗ Missed a bad day" in html
+    v = day["cities"]["Milwaukee"]
+    assert (v["call"], v["forecast"], v["measured"], v["result"]) == (app.OK, 28.1, 83.7, "✗ Missed a bad day")
 
     # Chicago 2025-08-01: SmokeCheck 51.8 warns, NOAA 8.7. Measured 45.5: right.
-    html = app.card(rows, "Chicago", "2025-08-01", metrics)
-    assert app.INDOORS in html and "51.8" in html and "<b>8.7</b>" in html and "✓ Right call" in html
+    v = json.loads(json.dumps(app.test_run("2025-08-01")))["cities"]["Chicago"]
+    assert (v["call"], v["forecast"], v["noaa"], v["measured"], v["result"]) == (app.INDOORS, 51.8, 8.7, 45.5, "✓ Right call")
+
+    # One answer carries all six cities, the days either side (for the day buttons) and the ends of 2025 (for the picker).
+    assert list(day["cities"]) == app.CITIES and day["start_city"] == "Minneapolis"
+    assert (day["before"], day["after"], day["first"], day["last"]) == ("2025-07-30", "2025-08-01", "2025-01-01", "2025-12-31")
+    assert app.test_run()["date"] == app.START_DATE  # no day asked for: the opening day
+    try:
+        app.test_run("2030-01-01")
+        raise AssertionError("a day outside 2025 must be refused")
+    except HTTPException as error:
+        assert error.status_code == 404
 
     # The same day as plain values, for anyone restyling the layout.
     v = app.replay_view(rows, "Minneapolis", "2025-07-31", metrics)
@@ -96,10 +112,10 @@ if (app.DATA / "predictions.csv").exists() and (app.DATA / "metrics.json").exist
     # The call follows SmokeCheck's forecast only, never the measurement.
     for _, row in rows[rows["date"].between("2025-07-25", "2025-08-05")].iterrows():
         expected = app.verdict(row["pred_model"], app.cutoff(metrics, "pred_model"))
-        assert f'<div class="call">{expected}</div>' in app.card(rows, row["city"], row["date"], metrics)
+        assert app.replay_view(rows, row["city"], row["date"], metrics)["call"] == expected
 
     # The map colours follow SmokeCheck's cut-off: on 2025-07-31 some cities warn and some do not.
-    assert {trace.name for trace in app.city_map(rows, "2025-07-31", metrics).data} == {app.OK, app.INDOORS}
+    assert set(app.map_points(rows, "2025-07-31", metrics)["call"]) == {app.OK, app.INDOORS}
 
     # The day buttons step one day and stop at the ends of 2025.
     assert app.step("2025-07-31", 1) == "2025-08-01" and app.step("2025-07-31", -1) == "2025-07-30"
@@ -125,6 +141,23 @@ if (app.DATA / "predictions.csv").exists() and (app.DATA / "metrics.json").exist
     # Smoke arrival days: SmokeCheck warned on 0 of the 21 in 2025.
     assert "warned on 0 of 21 in 2025" in app.arrival_note(rows, metrics)
 
+    # The /api/results answer: the same table, one list per row. The page reads rows 0, 1 and 2 by position.
+    out = json.loads(json.dumps(app.results()))
+    assert out["columns"] == list(table.columns) and out["limit"] == 35
+    assert out["rows"][0] == ["SmokeCheck", 2.36, 32, "11 of 35", 7, 127]
+    assert [(row[0], row[2]) for row in out["rows"]] == list(zip(table["Forecaster"], table["Warns above"]))
+    assert out["rows"][1][1] == 3.2 and out["rows"][2][5] == 123
+    assert "warned on 0 of 21 in 2025" in out["note"]
+
+# The page itself. It finds the kind of call by the words "indoors" and "outside" and draws its own icon.
+page = app.page().body.decode()
+assert "<title>SmokeCheck</title>" in page and "A prototype, not medical or health advice." in page
+assert "indoors" in app.INDOORS
+assert "outside" in app.OK and "indoors" not in app.OK
+assert "indoors" not in app.NOT_READY and "outside" not in app.NOT_READY
+assert "—" not in page  # no em dashes on screen
+assert "view.status" not in page  # fallback details stay in the status field, never on the page
+
 # 5. A Space-style layout still works: app.py with data/ next to it (no daily.csv, no ../data).
 # A COPY of app.py in a temp folder, loaded under another name so it does not replace `app`.
 if (app.DATA / "predictions.csv").exists() and (app.DATA / "metrics.json").exists():
@@ -139,7 +172,8 @@ if (app.DATA / "predictions.csv").exists() and (app.DATA / "metrics.json").exist
         space_app = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(space_app)
         assert space_app.DATA == space / "data"
-        assert space_app.INDOORS in space_app.card(space_app.ROWS, "Minneapolis", "2025-07-31", space_app.METRICS)
+        view = space_app.replay_view(space_app.ROWS, "Minneapolis", "2025-07-31", space_app.METRICS)
+        assert view["call"] == space_app.INDOORS
 
 # 6. The live "Tomorrow" tab, from a made-up tomorrow.csv in a temp folder (never the real data/).
 def write_tomorrow(folder, target, preds, status="ok"):
@@ -150,32 +184,48 @@ def write_tomorrow(folder, target, preds, status="ok"):
 
 live_metrics = {"threshold": 35, "warn_at": {"pred_model": 32}}
 with tempfile.TemporaryDirectory() as folder:
-    assert app.load_tomorrow(Path(folder)) is None  # not run yet: a grey card, no crash
-    assert app.NOT_READY in app.live_card(None, "Chicago", live_metrics, "2026-11-14")
+    assert app.load_tomorrow(Path(folder)) is None  # not run yet: a grey screen, no crash
+    assert app.live_view(None, "Chicago", live_metrics, "2026-11-14")["call"] == app.NOT_READY
     write_tomorrow(folder, "2026-11-15", [6.2, 40.0, 7.0, 8.0, 9.0, 10.0])
     rows = app.load_tomorrow(Path(folder))
 first = app.CITIES[0]  # 40.0 belongs to the second city in sorted order
-html = app.live_card(rows, first, live_metrics, "2026-11-14")
-assert app.OK in html and "practice on Sunday, November 15, 2026" in html and "Smoke forecast 6.2 · indoors above 32" in html
-assert "Forecast made Saturday at 7:12 PM" in html
-assert app.INDOORS in app.live_card(rows, app.CITIES[1], live_metrics, "2026-11-14")
+# The page writes these as "Practice on Sunday, November 15", "Smoke forecast 6.2", "Indoors above 32"
+# and "Forecast made Saturday at 7:12 PM".
+v = app.plain(app.live_view(rows, first, live_metrics, "2026-11-14"))
+assert (v["call"], v["date"], v["forecast"], v["warn_at"]) == (app.OK, "2026-11-15", 6.2, 32)
+assert v["made_at"] == "2026-11-14T19:12:00-06:00"
+assert app.live_view(rows, app.CITIES[1], live_metrics, "2026-11-14")["call"] == app.INDOORS
 # Still good on the practice day itself; out of date the day after, with no call.
-assert app.OK in app.live_card(rows, first, live_metrics, "2026-11-15")
-stale = app.live_card(rows, first, live_metrics, "2026-11-16")
-assert app.NOT_READY in stale and app.OK not in stale and "last forecast was for Sunday, November 15, 2026" in stale
-# A missing forecast says what it is waiting on; a fallback is shown as a note under a real call.
+assert app.live_view(rows, first, live_metrics, "2026-11-15")["call"] == app.OK
+stale = app.live_view(rows, first, live_metrics, "2026-11-16")
+assert (stale["state"], stale["call"], stale["date"]) == ("out_of_date", app.NOT_READY, "2026-11-15")
+# A missing forecast is "waiting", with no call; a fallback still gives a real call (its detail stays in status).
 with tempfile.TemporaryDirectory() as folder:
     write_tomorrow(folder, "2026-11-15", [float("nan")] * 6, status="no AirNow readings yet")
-    html = app.live_card(app.load_tomorrow(Path(folder)), first, live_metrics, "2026-11-14")
-    assert app.NOT_READY in html and "Waiting on: no AirNow readings yet" in html
+    v = app.live_view(app.load_tomorrow(Path(folder)), first, live_metrics, "2026-11-14")
+    assert (v["state"], v["call"], v["status"]) == ("waiting", app.NOT_READY, "no AirNow readings yet")
     write_tomorrow(folder, "2026-11-15", [6.2] * 6, status="NOAA run not out yet; used today's reading")
-    html = app.live_card(app.load_tomorrow(Path(folder)), first, live_metrics, "2026-11-14")
-    assert app.OK in html and "NOAA run" not in html  # fallbacks stay out of the coach's view
+    v = app.live_view(app.load_tomorrow(Path(folder)), first, live_metrics, "2026-11-14")
+    assert (v["state"], v["call"]) == ("ok", app.OK)
 assert app.live_view(rows, first, live_metrics, "2026-11-14")["state"] == "ok"
 assert app.live_view(rows, first, live_metrics, "2026-11-16")["state"] == "out_of_date"
 assert app.live_view(None, first, live_metrics, "2026-11-14")["state"] == "none"
-# A city missing from the file gets the grey card, not a crash.
-assert app.NOT_READY in app.live_card(rows, "Nowhere", live_metrics, "2026-11-14")
+# A city missing from the file gets the grey screen, not a crash.
+v = app.live_view(rows, "Nowhere", live_metrics, "2026-11-14")
+assert (v["state"], v["call"]) == ("none", app.NOT_READY)
+
+# The /api/live answer, fed the made-up forecast above. The stand-ins make sure this test never starts the real
+# forecast script and never reads the real data/tomorrow.csv; the real functions are put back afterwards.
+real = (app.load_tomorrow, app.today_central, app.refresh.refresh_if_stale)
+app.load_tomorrow, app.today_central, app.refresh.refresh_if_stale = (lambda: rows), (lambda: "2026-11-14"), (lambda rows: False)
+out = json.loads(json.dumps(asyncio.run(app.live())))
+app.load_tomorrow, app.today_central, app.refresh.refresh_if_stale = real
+assert out["status"] == {"refreshing": False, "failed": False} and out["start_city"] == app.START_CITY
+assert list(out["cities"]) == app.CITIES
+v = out["cities"][first]
+assert (v["state"], v["call"], v["forecast"], v["date"]) == ("ok", app.OK, 6.2, "2026-11-15")
+assert (v["warn_at"], v["made_at"]) == (app.cutoff(app.METRICS, "pred_model"), "2026-11-14T19:12:00-06:00")
+assert out["cities"][app.CITIES[1]]["call"] == app.INDOORS
 
 # 7. When the app remakes the forecast by itself (app/refresh.py). Times are UTC; Central standard = UTC - 6.
 from datetime import datetime, timezone  # noqa: E402

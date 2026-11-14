@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SmokeCheck · Night desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Big Shoulders is the City of Chicago's own typeface: a Midwest face for a Midwest forecast. -->
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #060A13;      /* page: near-black ink blue */
+  --ink-2: #0D1524;    /* lower third */
+  --ink-3: #18243C;    /* date tag, highlighted table row */
+  --paper: #F1F3F7;    /* main text */
+  --dim: #A3AEC2;      /* secondary text, and the grey "no forecast" state */
+  --smoke: #FFA940;    /* "indoors": the colour of the sun through smoke */
+  --clear: #8FE0FF;    /* "outside": clear evening sky */
+  --call: var(--smoke);
+  --g: 32px;           /* page gutter */
+  --content: calc(100vw - 2 * var(--g));
+  --numcol: 272px;     /* width of the number column left of the scale */
+  --display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+  --text: "Instrument Sans", system-ui, sans-serif;
+}
+body[data-call="outside"] { --call: var(--clear); }
+body[data-call="waiting"] { --call: var(--dim); }
+
+* { box-sizing: border-box; margin: 0; }
+[hidden] { display: none !important; }
+body {
+  min-height: 100dvh; display: grid; grid-template-rows: auto 1fr auto auto;
+  background: var(--ink); color: var(--paper);
+  font: 400 17px/1.5 var(--text); overflow-x: hidden;
+}
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; touch-action: manipulation; }
+:focus-visible { outline: 3px solid var(--paper); outline-offset: 3px; }
+svg { display: block; }
+#haze { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.top, main, .lower, .fine { position: relative; z-index: 1; }
+
+/* ---- top bar ---- */
+.top { display: flex; align-items: center; gap: 36px; padding: 14px var(--g) 0; }
+.mark { font: 900 28px/1 var(--display); text-transform: uppercase; letter-spacing: .01em; }
+.tabs { display: flex; gap: 6px; }
+.tabs button { position: relative; min-height: 44px; padding: 0 12px; color: var(--dim); font-weight: 500; transition: color .2s; }
+.tabs button::after {              /* the bar under the active view grows from the left */
+  content: ""; position: absolute; left: 12px; right: 12px; bottom: 4px; height: 4px;
+  background: var(--paper); transform: scaleX(0); transform-origin: left; transition: transform .3s cubic-bezier(.22,1,.36,1);
+}
+.tabs button[aria-current="page"] { color: var(--paper); }
+.tabs button[aria-current="page"]::after { transform: scaleX(1); }
+.preview { margin-left: auto; min-height: 44px; display: flex; align-items: center; gap: 10px; color: var(--dim); font-size: 15px; }
+.preview i { width: 14px; height: 14px; box-shadow: inset 0 0 0 2px var(--dim); transition: background .2s; }
+.preview[aria-pressed="true"] { color: var(--paper); }
+.preview[aria-pressed="true"] i { background: var(--paper); box-shadow: none; }
+
+/* ---- the call (Tomorrow and 2025 test run share this screen) ---- */
+.call { padding: 2px var(--g) 12px; }
+.context { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 18px; min-height: 44px; }
+.context .city { font: 700 32px/1 var(--display); text-transform: uppercase; letter-spacing: .02em; }
+.context .day { font-size: 21px; color: var(--dim); }
+.steps { display: flex; gap: 6px; }
+.steps button { width: 44px; height: 44px; display: grid; place-items: center; background: var(--ink-3); transition: opacity .2s, background .2s; }
+.steps button:hover { background: #24345a; }
+.steps button:disabled { opacity: .35; cursor: default; }
+.steps svg { width: 20px; height: 20px; }
+
+.verdict {
+  display: flex; flex-wrap: wrap; column-gap: .2em; margin-left: -.02em;
+  /* sized from the content width so the longest line ("OK TO PRACTICE") always fits; capped on short wide screens */
+  font: 900 min(calc(var(--content) * .136), 24vh)/.84 var(--display);
+  text-transform: uppercase; transition: color .3s;
+}
+.verdict .ln { overflow: hidden; padding-top: .04em; }     /* each line is a mask the words slide through */
+.verdict .ln:last-child { flex-basis: 100%; }
+.verdict .chunk { display: inline-flex; align-items: center; gap: .14em; will-change: transform; }
+.verdict .key { color: var(--call); transition: color .3s; }
+.verdict svg { width: .56em; height: .56em; margin-bottom: .04em; }
+body[data-call="waiting"] .verdict { color: var(--dim); }
+body[data-call="waiting"] .verdict svg { display: none; }
+.made { margin-top: 8px; font-size: 20px; line-height: 1.3; color: var(--dim); }
+
+/* ---- the scale: three lanes on one axis, one line at 32 ---- */
+.read { display: grid; grid-template-columns: 1fr 350px; gap: 44px; margin-top: 10px; transition: opacity .3s, visibility .3s; }
+body[data-call="waiting"] .read { opacity: 0; visibility: hidden; }
+.scale { position: relative; display: grid; grid-template-columns: var(--numcol) 1fr; align-items: center; }
+.plot { position: absolute; left: var(--numcol); right: 0; top: 0; bottom: 22px; }
+.plot .zone { position: absolute; top: 0; bottom: 0; right: 0; left: calc(var(--line) * 100%); background: rgba(255,169,64,.10); }
+.plot .at32 { position: absolute; top: 0; bottom: 0; left: calc(var(--line) * 100%); width: 3px; background: var(--paper); }
+.linelabel { grid-column: 2; position: relative; height: 40px; padding-left: calc(var(--line) * 100% + 14px); display: flex; align-items: baseline; gap: 10px; color: var(--paper); font-size: 16px; }
+.linelabel b { font: 900 36px/40px var(--display); }
+.who { grid-column: 1; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-right: 22px; height: 44px; white-space: nowrap; color: var(--dim); font-size: 15px; }
+.who b { font: 900 40px/44px var(--display); color: var(--paper); font-variant-numeric: tabular-nums; }
+.who.main { height: 66px; color: var(--paper); font-size: 16px; }
+.who.main b { font-size: 66px; line-height: 66px; color: var(--call); transition: color .3s; }
+.track { grid-column: 2; position: relative; height: 8px; background: rgba(255,255,255,.07); }
+.track.main { height: 22px; }
+.bar { position: absolute; inset: 0; transform-origin: left; transform: scaleX(var(--x, 0)); background: var(--dim); }
+.track.main .bar { background: var(--call); transition: background .3s; }
+.track.obs .bar { background: var(--paper); }
+.axis { grid-column: 2; display: flex; justify-content: space-between; height: 22px; padding-top: 4px; font-size: 13px; line-height: 18px; color: var(--dim); }
+
+/* parts that only exist in the 2025 test run */
+.test-only { opacity: 0; visibility: hidden; transition: opacity .3s, visibility .3s; }
+body[data-view="test"] .test-only { opacity: 1; visibility: visible; }
+
+.side { display: grid; align-content: start; padding-top: 40px; }
+.side > * { grid-area: 1 / 1; }
+.explain { font-size: 20px; line-height: 1.4; max-width: 17em; transition: opacity .3s, visibility .3s; }
+body[data-view="test"] .explain { opacity: 0; visibility: hidden; }
+.outcome .q { color: var(--dim); font-size: 16px; }
+.outcome .a { display: inline-flex; align-items: center; gap: 12px; margin: 6px 0 10px; padding: 7px 16px 5px 12px; font: 900 40px/1 var(--display); text-transform: uppercase; white-space: nowrap; }
+.outcome .a svg { width: 30px; height: 30px; }
+/* solid block = right, hollow block = wrong: the shape carries it, not a colour */
+.outcome .a[data-ok="true"] { background: var(--paper); color: var(--ink); }
+.outcome .a[data-ok="false"] { box-shadow: inset 0 0 0 3px var(--paper); }
+.outcome .m { font-size: 17px; max-width: 18em; }
+
+/* ---- lower third: all six cities ---- */
+.lower { display: flex; background: var(--ink-2); }
+.tag { flex: 0 0 188px; padding: 10px 18px 8px var(--g); white-space: nowrap; background: var(--ink-3); display: flex; flex-direction: column; justify-content: center; }
+.tag b { font: 900 30px/1 var(--display); text-transform: uppercase; }
+.tag span { color: var(--dim); font-size: 15px; }
+.cities { flex: 1; min-width: 0; position: relative; display: grid; grid-template-columns: repeat(6, 1fr); }
+.pick { position: absolute; top: 0; left: 0; width: calc(100% / 6); height: 100%; background: var(--paper); }
+.cities button { position: relative; text-align: left; padding: 11px 8px 9px 16px; display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: 0 8px; transition: color .25s; }
+.cities button:hover:not([aria-pressed="true"]) { background: rgba(255,255,255,.05); }
+.cities .name { grid-column: 1 / -1; font: 700 20px/1.1 var(--display); text-transform: uppercase; letter-spacing: .03em; }
+.cities .num { font: 900 40px/1 var(--display); font-variant-numeric: tabular-nums; }
+.cities .word { display: flex; align-items: center; gap: 5px; font-size: 15px; font-weight: 500; color: var(--clear); transition: color .25s; }
+.cities .word svg { width: 15px; height: 15px; }
+.cities button[data-call="indoors"] .word { color: var(--smoke); }
+.cities button[data-call="waiting"] .word, .cities button[data-call="waiting"] .num { color: var(--dim); }
+.cities button[data-call="waiting"] svg { display: none; }
+.cities button[aria-pressed="true"], .cities button[aria-pressed="true"] :is(.word, .num) { color: var(--ink); }
+
+.fine { padding: 6px var(--g) 8px; font-size: 13px; color: var(--dim); background: var(--ink-2); }
+
+/* ---- Does it work? ---- */
+.results { padding: 26px var(--g) 22px; }
+.results h1 { font: 900 calc(var(--content) * .083)/.9 var(--display); text-transform: uppercase; margin-left: -.02em; }
+.results .but { margin-top: 10px; font-size: 25px; line-height: 1.3; max-width: 31em; }
+table { width: 100%; margin-top: 24px; border-collapse: collapse; }
+thead th { text-align: left; padding: 0 16px 8px; font-size: 15px; font-weight: 500; color: var(--dim); }
+tbody th { text-align: left; padding: 14px 16px; font-size: 18px; font-weight: 500; }
+td { padding: 14px 16px 12px; font: 900 34px/1 var(--display); font-variant-numeric: tabular-nums; }
+tr.us { background: var(--ink-3); }
+tr.us th { font-weight: 600; }
+.cost { display: flex; align-items: center; gap: 12px; }
+.cost i { height: 10px; width: calc(var(--c) * 1px); background: var(--dim); transform-origin: left; }
+tr.us .cost i { background: var(--paper); }
+.cost small { font: 500 14px var(--text); color: var(--dim); }
+.weak { margin-top: 22px; padding: 16px 20px; background: var(--ink-2); font-size: 22px; line-height: 1.35; text-wrap: pretty; }
+.weak b { font-weight: 600; color: var(--smoke); }
+.how { margin-top: 14px; font-size: 15px; color: var(--dim); }
+
+/* ---- phone ---- */
+@media (max-width: 720px) {
+  :root { --g: 16px; --numcol: 108px; }
+  .top { flex-wrap: wrap; gap: 0 12px; padding-top: 10px; }
+  .mark { font-size: 24px; }
+  .tabs { order: 3; flex: 0 0 100%; margin-left: -9px; gap: 0; }
+  .preview { min-height: 40px; font-size: 14px; }
+  .tabs button { font-size: 15px; padding: 0 9px; white-space: nowrap; }
+  .tabs button::after { left: 9px; right: 9px; }
+  .context .city { font-size: 26px; }
+  .context .day { font-size: 17px; }
+  body:not([data-view="test"]) .steps { display: none; }   /* no empty row on the phone */
+  .verdict { flex-direction: column; font-size: calc(var(--content) * .262); margin-top: 6px; }
+  .verdict svg { width: .46em; height: .46em; }
+  .made { font-size: 17px; }
+  .read { grid-template-columns: 1fr; gap: 0; }
+  .who { flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; height: 58px; padding-right: 8px; font-size: 13px; line-height: 1.2; }
+  .who b { font-size: 30px; line-height: 1; }
+  .who.main { height: 72px; font-size: 13px; }
+  .who.main b { font-size: 46px; line-height: 1; }
+  .linelabel { font-size: 13px; gap: 6px; }
+  .linelabel b { font-size: 30px; }
+  .side { padding-top: 16px; }
+  .explain { font-size: 18px; }
+  .lower { flex-direction: column; }
+  .tag { flex: none; flex-direction: row; align-items: baseline; justify-content: flex-start; gap: 10px; padding: 10px var(--g) 8px; }
+  .tag b { font-size: 24px; }
+  .cities { grid-template-columns: repeat(3, 1fr); }
+  .pick { width: calc(100% / 3); height: 50%; }
+  .cities button { grid-template-columns: 1fr; padding: 12px 8px 12px 12px; }
+  .cities .name { font-size: 16px; letter-spacing: .01em; }
+  .cities .num { font-size: 34px; margin-top: 2px; }
+  .cities .word { font-size: 14px; }
+  .results h1 { font-size: calc(var(--content) * .17); }
+  .results .but { font-size: 19px; }
+  .weak { font-size: 18px; padding: 14px 16px; }
+  /* the table becomes one block per forecast, with each number carrying its own label */
+  table, tbody, tbody th { display: block; }
+  thead { display: none; }
+  tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 8px; padding: 14px 12px; }
+  td:last-child { grid-column: span 2; }
+  tbody th { grid-column: 1 / -1; padding: 0; }
+  td { padding: 0; font-size: 26px; }
+  td::before { content: attr(data-l); display: block; margin-bottom: 2px; font: 400 12px/1.2 var(--text); color: var(--dim); }
+  .cost i { width: calc(var(--c) * .25px); }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
+</style>
+</head>
+<body data-view="tomorrow" data-call="indoors">
+
+<!-- icons, drawn once and reused with <use> -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-indoors" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2 1.5 11h3v11h15V11h3z"/></symbol>
+  <symbol id="i-outside" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5.2" fill="currentColor"/><path stroke="currentColor" stroke-width="2.4" stroke-linecap="round" d="M12 1.8v2.6M12 19.6v2.6M1.8 12h2.6M19.6 12h2.6M4.8 4.8l1.8 1.8M17.4 17.4l1.8 1.8M4.8 19.2l1.8-1.8M17.4 6.6l1.8-1.8"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" d="M4 12.5 9.5 18 20 6.5"/></symbol>
+  <symbol id="i-wrong" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" d="m5.5 5.5 13 13m0-13-13 13"/></symbol>
+  <symbol id="i-prev" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="m15 4-8 8 8 8"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="m9 4 8 8-8 8"/></symbol>
+</svg>
+
+<canvas id="haze" aria-hidden="true"></canvas>
+
+<header class="top">
+  <div class="mark">SmokeCheck</div>
+  <nav class="tabs" aria-label="Views">
+    <button data-view="tomorrow" aria-current="page">Tomorrow</button>
+    <button data-view="test">2025 test run</button>
+    <button data-view="results">Does it work?</button>
+  </nav>
+  <button class="preview" id="preview" aria-pressed="false"><i></i>Preview "no forecast yet"</button>
+</header>
+
+<main>
+  <section class="call" id="call">
+    <div class="context">
+      <span class="city" id="ctx-city">Minneapolis</span>
+      <span class="day" id="ctx-day">Tomorrow, Sun Nov 15</span>
+      <span class="steps test-only">
+        <button id="prev" aria-label="Previous day"><svg><use href="#i-prev"/></svg></button>
+        <button id="next" aria-label="Next day"><svg><use href="#i-next"/></svg></button>
+      </span>
+    </div>
+
+    <h1 class="verdict" aria-live="polite">
+      <span class="ln"><span class="chunk">Move</span></span>
+      <span class="ln"><span class="chunk">practice</span></span>
+      <span class="ln"><span class="chunk key"><span>indoors</span><svg aria-hidden="true"><use id="v-icon" href="#i-indoors"/></svg></span></span>
+    </h1>
+    <p class="made" id="made">Forecast made Saturday at 7:12 PM from that evening's readings.</p>
+
+    <div class="read">
+      <div class="scale" id="scale" role="img">
+        <div class="plot"><div class="zone"></div><div class="at32"></div></div>
+        <div class="linelabel"><b>32</b> indoors above this line</div>
+        <div class="who main">Smoke forecast <b id="n-model">41.3</b></div>
+        <div class="track main"><div class="bar" id="b-model"></div></div>
+        <div class="who">NOAA official <b id="n-noaa">18.7</b></div>
+        <div class="track"><div class="bar" id="b-noaa"></div></div>
+        <div class="who test-only">Measured <b id="n-obs">69.1</b></div>
+        <div class="track obs test-only"><div class="bar" id="b-obs"></div></div>
+        <div class="axis"><span>0</span><span>90 µg/m³</span></div>
+      </div>
+
+      <div class="side">
+        <p class="explain" id="explain">41.3 is above our line of 32, so practice moves indoors. NOAA's official forecast says 18.7.</p>
+        <div class="outcome test-only" id="outcome">
+          <p class="q">Was it right?</p>
+          <p class="a" id="out-a" data-ok="true"><svg aria-hidden="true"><use id="out-icon" href="#i-right"/></svg><span id="out-text">Right call</span></p>
+          <p class="m" id="out-m">Measured 69.1 that day. A bad day is above 35.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="results" id="results" hidden>
+    <h1>26% lower error than NOAA</h1>
+    <p class="but">But its warnings were slightly worse than just reading NOAA's forecast at 35: a cost of 127 against 123.</p>
+    <table>
+      <thead><tr><th scope="col">Forecast</th><th scope="col">Avg error</th><th scope="col">Warns above</th><th scope="col">Caught</th><th scope="col">False alarms</th><th scope="col">Cost</th></tr></thead>
+      <tbody>
+        <tr class="us"><th scope="row">SmokeCheck</th><td data-l="Avg error">2.36</td><td data-l="Warns above">32</td><td data-l="Caught">11 of 35</td><td data-l="False alarms">7</td><td data-l="Cost"><span class="cost">127<i style="--c:127"></i></span></td></tr>
+        <tr><th scope="row">NOAA official, its own line</th><td data-l="Avg error">3.20</td><td data-l="Warns above">52.5</td><td data-l="Caught">2 of 35</td><td data-l="False alarms">1</td><td data-l="Cost"><span class="cost">166<i style="--c:166"></i></span></td></tr>
+        <tr><th scope="row">NOAA official, at 35</th><td data-l="Avg error">3.20</td><td data-l="Warns above">35</td><td data-l="Caught">12 of 35</td><td data-l="False alarms">8</td><td data-l="Cost"><span class="cost">123<i style="--c:123"></i><small>lowest</small></span></td></tr>
+        <tr><th scope="row">Yesterday's reading</th><td data-l="Avg error">3.40</td><td data-l="Warns above">37</td><td data-l="Caught">12 of 35</td><td data-l="False alarms">19</td><td data-l="Cost"><span class="cost">134<i style="--c:134"></i></span></td></tr>
+      </tbody>
+    </table>
+    <p class="weak"><b>Weak spot.</b> SmokeCheck caught 0 of the 21 days when smoke first arrived. It catches smoke that lingers (11 of 14).</p>
+    <p class="how">All of 2025, a year the model never saw: 2,190 city-days, 35 bad days. Cost is 5 for each missed bad day plus 1 for each false alarm. Lower is better.</p>
+  </section>
+</main>
+
+<footer class="lower" id="lower">
+  <div class="tag"><b id="tag-day">Sun Nov 15</b><span id="tag-what">Tomorrow</span></div>
+  <div class="cities" id="cities"><div class="pick" id="pick"></div></div>
+</footer>
+<p class="fine">A prototype, not medical or health advice. Smoke is PM2.5 in µg/m³, averaged over the day. A bad day is above 35, the EPA 24-hour limit.</p>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script>
+// ---------- data ----------
+const LINE = 32;   // SmokeCheck says "indoors" when its forecast is above this
+const BAD = 35;    // a measured day above this is a "bad day" (EPA 24-hour limit)
+const MAX = 90;    // right end of the scale
+
+const DAYS = ['2025-07-28', '2025-07-29', '2025-07-30', '2025-07-31', '2025-08-01', '2025-08-02', '2025-08-03', '2025-08-04'];
+// Real rows from data/predictions.csv (split == test). Each day is [measured, NOAA forecast, SmokeCheck forecast].
+const DATA = {
+  'Chicago':     [[8.216, 13.76, 8.41], [9.405, 8.8, 8.0],  [12.391, 9.29, 9.22],   [65.648, 13.7, 15.31], [45.544, 8.7, 51.75],  [26.192, 11.41, 25.99], [31.873, 25.2, 17.62], [20.773, 28.46, 24.68]],
+  'Milwaukee':   [[6.321, 14.62, 5.53], [8.554, 8.4, 6.36], [32.287, 16.17, 10.8],  [83.729, 13.4, 28.08], [35.464, 9.5, 57.08],  [47.443, 26.31, 18.67], [62.517, 40.4, 33.12], [36.346, 42.14, 39.67]],
+  'Madison':     [[5.064, 9.3, 4.1],    [9.93, 5.0, 5.65],  [28.589, 12.73, 11.62], [81.973, 15.6, 26.82], [35.817, 10.5, 59.76], [34.174, 33.01, 20.38], [38.943, 43.5, 25.91], [37.476, 39.88, 28.41]],
+  'Minneapolis': [[6.547, 8.4, 4.14],   [9.221, 4.7, 6.37], [50.571, 15.25, 11.59], [69.063, 18.7, 41.26], [75.34, 30.2, 46.27],  [42.1, 40.81, 48.7],    [26.351, 41.5, 23.97], [29.215, 42.18, 20.33]],
+  'Detroit':     [[6.884, 12.1, 8.51],  [8.338, 13.2, 7.62],[18.977, 14.97, 10.74], [45.875, 15.3, 18.48], [14.251, 4.0, 35.46],  [9.894, 12.51, 13.2],   [30.453, 20.4, 18.04], [53.817, 25.56, 30.24]],
+  'St. Louis':   [[8.519, 8.24, 7.37],  [8.321, 8.6, 9.54], [7.435, 10.65, 11.77],  [19.409, 6.4, 12.59],  [41.924, 10.9, 24.83], [18.486, 7.01, 29.83],  [6.917, 16.0, 11.65],  [5.719, 16.2, 13.83]],
+};
+const CITIES = Object.keys(DATA);
+
+// There is no live feed yet, so "Tomorrow" shows the Jul 31, 2025 numbers under tomorrow's real date.
+const LIVE = { day: 3, label: 'Sun Nov 15', made: 'Saturday at 7:12 PM' };
+
+const row = (city, day) => { const [obs, noaa, model] = DATA[city][day]; return { obs, noaa, model }; };
+
+function judge({ obs, model }) {
+  const warned = model > LINE, bad = obs > BAD;
+  if (warned === bad) return { ok: true, text: 'Right call' };
+  return { ok: false, text: bad ? 'Missed a bad day' : 'False alarm' };
+}
+// Self-check against the four demo days in the brief.
+console.assert(
+  judge(row('Minneapolis', 3)).text === 'Right call' && judge(row('Chicago', 3)).text === 'Missed a bad day' &&
+  judge(row('Chicago', 4)).text === 'Right call' && judge(row('Milwaukee', 3)).text === 'Missed a bad day' &&
+  judge(row('Detroit', 4)).text === 'False alarm', 'judge() disagrees with the demo days');
+
+// ---------- small helpers ----------
+const $ = sel => document.querySelector(sel);
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const one = v => v.toFixed(1);
+const dayName = iso => new Date(iso + 'T12:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).replace(',', '');
+
+const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const live = !!window.gsap && !calm;   // animate only if GSAP loaded and the viewer has not asked for less motion
+if (live) gsap.ticker.lagSmoothing(0);  // keep real-time pace after a stall, so headless screenshots land on the final frame
+
+// Every number on screen moves through this one helper. With GSAP it eases there; otherwise it jumps
+// straight to the final value, so the call is never left half-drawn.
+function glide(obj, target, paint, duration = 0.9) {
+  if (!live) { Object.assign(obj, target); if (paint) paint(); return; }
+  gsap.to(obj, { ...target, duration, ease: 'power3.out', overwrite: true, onUpdate: paint || undefined });
+}
+
+// ---------- state ----------
+const state = { view: 'tomorrow', city: 'Minneapolis', day: 3, waiting: false };
+
+// Optional start state in the address, for example #test/Chicago/4 (view / city / day number).
+{
+  const [v, c, d] = decodeURIComponent(location.hash.slice(1)).split('/');
+  if (['tomorrow', 'test', 'results', 'waiting'].includes(v)) { state.view = v === 'waiting' ? 'tomorrow' : v; state.waiting = v === 'waiting'; }
+  if (CITIES.includes(c)) state.city = c;
+  if (DAYS[d]) state.day = +d;
+}
+
+// ---------- the verdict headline ----------
+const WORDS = { indoors: ['Move', 'practice', 'indoors'], outside: ['OK to', 'practice', 'outside'], waiting: ['No', 'forecast', 'yet'] };
+const chunks = [...document.querySelectorAll('.verdict .chunk')];
+let shownCall, verdictMove;
+
+function setVerdict(call) {
+  if (call === shownCall) return;            // same call as before: the headline stays still, only the numbers move
+  const first = shownCall === undefined;
+  shownCall = call;
+  const swap = () => {
+    chunks[0].textContent = WORDS[call][0];
+    chunks[1].textContent = WORDS[call][1];
+    chunks[2].firstElementChild.textContent = WORDS[call][2];
+    if (call !== 'waiting') $('#v-icon').setAttribute('href', '#i-' + call);
+    document.body.dataset.call = call;       // flips the accent colour everywhere at the same moment
+  };
+  if (!live) return swap();
+  if (verdictMove) verdictMove.kill();
+  verdictMove = gsap.timeline();
+  if (!first) verdictMove.to(chunks, { yPercent: -110, duration: 0.22, ease: 'power2.in', stagger: 0.03 });
+  verdictMove.add(swap).fromTo(chunks, { yPercent: 110 }, { yPercent: 0, duration: 0.75, ease: 'expo.out', stagger: 0.08 });
+}
+
+// ---------- the three numbers and their bars ----------
+const shown = { model: 0, noaa: 0, obs: 0 };
+function paintNumbers() {
+  for (const k of ['model', 'noaa', 'obs']) {
+    $('#n-' + k).textContent = one(shown[k]);
+    $('#b-' + k).style.setProperty('--x', Math.min(shown[k] / MAX, 1));
+  }
+}
+$('#scale').style.setProperty('--line', LINE / MAX);
+
+// ---------- lower third ----------
+const cityButtons = CITIES.map(city => {
+  const b = document.createElement('button');
+  b.innerHTML = `<span class="name">${city}</span><span class="num"></span><span class="word"><svg aria-hidden="true"><use/></svg><span></span></span>`;
+  b.onclick = () => { state.city = city; show(); };
+  $('#cities').append(b);
+  return { city, b, num: b.querySelector('.num'), use: b.querySelector('use'), word: b.querySelector('.word span'), shown: { v: 0 } };
+});
+const pickAt = { col: 0, row: 0 };
+const paintPick = () => { $('#pick').style.transform = `translate(${pickAt.col * 100}%, ${pickAt.row * 100}%)`; };
+function movePick() {
+  // the highlight is exactly one cell big, so "one cell over" is a 100% shift of itself: no pixel measuring
+  const cols = matchMedia('(max-width: 720px)').matches ? 3 : 6;
+  const i = CITIES.indexOf(state.city);
+  glide(pickAt, { col: i % cols, row: Math.floor(i / cols) }, paintPick, 0.5);
+}
+
+// ---------- smoke haze ----------
+// Soft puffs drift across a canvas behind everything. Thicker forecast, more puffs.
+const canvas = $('#haze'), ctx = canvas.getContext('2d');
+const haze = { density: 0 };   // 0 = clear air, 1 = thick smoke
+const frac = v => v - Math.floor(v);
+const puffs = Array.from({ length: 28 }, (_, i) => ({
+  x: frac(i * 0.618),                       // golden-ratio steps spread the puffs evenly and the same on every load
+  y: 0.05 + 0.6 * frac(i * 0.381 + 0.2),    // kept to the upper part of the screen, behind the headline
+  r: 0.2 + 0.2 * frac(i * 0.27),
+  speed: 0.004 + 0.007 * frac(i * 0.73),    // share of the screen width per second: slow
+  need: i / 28,                             // puff i only shows once density passes this
+}));
+const puff = document.createElement('canvas');   // one blurry dot, drawn once and stamped many times
+puff.width = puff.height = 128;
+{
+  const c = puff.getContext('2d'), g = c.createRadialGradient(64, 64, 0, 64, 64, 64);
+  g.addColorStop(0, 'rgba(206,132,74,1)'); g.addColorStop(1, 'rgba(206,132,74,0)');
+  c.fillStyle = g; c.fillRect(0, 0, 128, 128);
+}
+function sizeHaze() { canvas.width = innerWidth / 2; canvas.height = innerHeight / 2; }   // half size: haze is blurry anyway
+function drawHaze(t) {
+  const w = canvas.width, h = canvas.height, size = Math.max(w, h);
+  ctx.clearRect(0, 0, w, h);
+  for (const p of puffs) {
+    const alpha = clamp((haze.density - p.need) * 5, 0, 1) * 0.085;   // low alpha per puff keeps text contrast safe
+    if (!alpha) continue;
+    const r = p.r * size;
+    const x = frac(p.x + t * p.speed) * (w + 2 * r) - r;
+    const y = p.y * h + Math.sin(t * 0.15 + p.x * 9) * 0.02 * h;
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(puff, x - r, y - r, 2 * r, 2 * r);
+  }
+}
+const paintHazeOnce = calm ? () => drawHaze(0) : null;   // reduced motion: a still haze, redrawn only when the data changes
+sizeHaze();
+if (!calm) (function loop(ms) { drawHaze(ms / 1000); requestAnimationFrame(loop); })(0);
+
+// ---------- draw the current state ----------
+let shownOutcome;
+function show() {
+  const test = state.view === 'test';
+  const waiting = state.view === 'tomorrow' && state.waiting;
+  const day = test ? state.day : LIVE.day;
+  const r = row(state.city, day);
+  const call = waiting ? 'waiting' : r.model > LINE ? 'indoors' : 'outside';
+
+  $('#ctx-city').textContent = state.city;
+  $('#ctx-day').textContent = test ? dayName(DAYS[day]) + ', 2025' : 'Tomorrow, ' + LIVE.label;
+  $('#tag-day').textContent = test ? dayName(DAYS[day]) : LIVE.label;
+  $('#tag-what').textContent = test ? '2025 test run' : 'Tomorrow';
+  $('#prev').disabled = day === 0;
+  $('#next').disabled = day === DAYS.length - 1;
+  $('#made').textContent = waiting ? "Waiting on: tonight's readings"
+    : test ? 'A day from 2025, a year the model never saw.'
+    : `Forecast made ${LIVE.made} from that evening's readings.`;
+
+  setVerdict(call);
+  if (state.view === 'results') return glide(haze, { density: 0.12 }, paintHazeOnce, 1.6);
+  glide(haze, { density: waiting ? 0 : clamp((r.model - 5) / 50, 0.04, 1) }, paintHazeOnce, 1.6);
+
+  if (!waiting) {
+    glide(shown, r, paintNumbers);
+    const above = r.model > LINE;
+    $('#explain').textContent = `${one(r.model)} is ${above ? 'above' : 'below'} our line of ${LINE}, so practice ${above ? 'moves indoors' : 'stays outside'}. NOAA's official forecast says ${one(r.noaa)}.`;
+    $('#scale').setAttribute('aria-label', `Smoke forecast ${one(r.model)}. Indoors above ${LINE}. NOAA official forecast ${one(r.noaa)}.` + (test ? ` Measured ${one(r.obs)}.` : ''));
+  }
+
+  const verdict = judge(r);
+  $('#out-a').dataset.ok = verdict.ok;
+  $('#out-icon').setAttribute('href', verdict.ok ? '#i-right' : '#i-wrong');
+  $('#out-text').textContent = verdict.text;
+  $('#out-m').textContent = `Measured ${one(r.obs)} that day. A bad day is above ${BAD}.`;
+  const outcomeKey = state.city + day;
+  if (live && test && outcomeKey !== shownOutcome) gsap.fromTo('#outcome', { y: 12, opacity: 0.2 }, { y: 0, opacity: 1, duration: 0.4, ease: 'power3.out', clearProps: 'all' });
+  shownOutcome = outcomeKey;
+
+  for (const c of cityButtons) {
+    const m = row(c.city, day).model;
+    const cityCall = waiting ? 'waiting' : m > LINE ? 'indoors' : 'outside';
+    c.b.dataset.call = cityCall;
+    c.b.setAttribute('aria-pressed', c.city === state.city);
+    c.word.textContent = waiting ? 'Waiting' : m > LINE ? 'Indoors' : 'Outside';
+    if (waiting) { if (window.gsap) gsap.killTweensOf(c.shown); c.shown.v = 0; c.num.textContent = '--'; continue; }
+    c.use.setAttribute('href', '#i-' + cityCall);
+    glide(c.shown, { v: m }, () => { c.num.textContent = one(c.shown.v); }, 0.7);
+  }
+  movePick();
+}
+
+// ---------- switching views ----------
+function setView(view) {
+  const wasResults = state.view === 'results', isResults = view === 'results';
+  state.view = view;
+  document.body.dataset.view = view;
+  for (const b of document.querySelectorAll('.tabs button')) {
+    if (b.dataset.view === view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  }
+  $('#preview').hidden = view !== 'tomorrow';
+  show();
+  if (wasResults === isResults) return;      // Tomorrow <-> test run share one screen: nothing to swap
+
+  const [out, inn] = isResults ? [$('#call'), $('#results')] : [$('#results'), $('#call')];
+  const flip = () => { out.hidden = true; inn.hidden = false; $('#lower').hidden = isResults; };
+  if (!live) return flip();
+  const tl = gsap.timeline().to(out, { opacity: 0, duration: 0.18 }).add(flip)
+    .fromTo(inn, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power3.out', clearProps: 'transform' });
+  if (isResults) tl.from('#results tbody tr', { opacity: 0, y: 10, duration: 0.4, stagger: 0.06, ease: 'power3.out' }, '<0.1')
+                   .from('#results .cost i', { scaleX: 0, duration: 0.8, stagger: 0.06, ease: 'power3.out' }, '<');
+}
+
+// ---------- wiring ----------
+for (const b of document.querySelectorAll('.tabs button')) b.onclick = () => setView(b.dataset.view);
+const step = by => { if (state.view === 'test' && DAYS[state.day + by]) { state.day += by; show(); } };
+$('#prev').onclick = () => step(-1);
+$('#next').onclick = () => step(1);
+addEventListener('keydown', e => { if (e.key === 'ArrowLeft') step(-1); if (e.key === 'ArrowRight') step(1); });
+$('#preview').onclick = () => { state.waiting = !state.waiting; $('#preview').setAttribute('aria-pressed', state.waiting); show(); };
+addEventListener('resize', () => { sizeHaze(); movePick(); if (paintHazeOnce) paintHazeOnce(); });
+
+$('#preview').setAttribute('aria-pressed', state.waiting);
+setView(state.view);
+if (state.view === 'results') { $('#call').hidden = true; $('#results').hidden = false; $('#lower').hidden = true; }
+</script>
+</body>
+</html>
