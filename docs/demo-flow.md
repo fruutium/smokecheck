@@ -7,7 +7,7 @@ It reads two files and nothing else: `data/predictions.csv` and `data/metrics.js
 1. Opens on **Milwaukee, July 31, 2025**, no clicks needed. SmokeCheck forecast 27.6, above its warning line of 24 → **Move practice indoors**. Measured 83.7. NOAA's official forecast said 13.4. (Our success.)
 2. The card says why the line is 24, not 35: forecasts run low on smoke days, and the line was set on 2022–2024 so one missed bad day costs as much as 5 false alarms.
 3. Under the card, each forecast with its own call: Raw CAMS estimate 38.5 → warn (line 29.5) · persistence 32.3 → outside (line 37) · monitors measured 83.7 (a bad day).
-4. Switch city to **Chicago**, same day: SmokeCheck 13.9 and NOAA 13.7 → outside, measured 65.7. (Our miss, and NOAA's: smoke arrived overnight. Only the optimistic CAMS archive, 34.3, warned.)
+4. Switch city to **Chicago**, same day: SmokeCheck 13.9 and NOAA 13.7 → outside, measured 65.6. (Our miss, and NOAA's: smoke arrived overnight. Only the optimistic CAMS archive, 34.3, warned.)
 5. Step the slider to **August 1**: SmokeCheck 54.8 → warn, NOAA 8.7 and CAMS 19.1 → outside, measured 45.5. (Smoke lingering: our strength.)
 6. Tab **"Does it work?"**: one row per forecast (MAE, warns above, bad days caught of 35, false alarms), then smoke vs clean days, then by city.
 7. Tab **"Where it fails"**: the worst misses in 2025, with a note that smoke-arrival days are the weak spot.
