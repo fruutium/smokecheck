@@ -29,7 +29,7 @@
 # %% [markdown]
 # ## 1. Load the data
 #
-# Three small files, all built by the scripts in this repo (`fetch_data.py`, `fetch_smoke.py`, `fetch_dayahead.py`):
+# Small files, all built by the scripts in this repo (`fetch_*.py`):
 #
 # - `data/daily.csv`, one row per city per day for six Midwest metro areas:
 #   - `obs_pm25`: what EPA monitors **measured**, averaged over the metro area (µg/m³). This is what we forecast.
@@ -40,7 +40,9 @@
 # - `data/weather_dayahead_2025.csv`: for 2025 only, the weather that was **forecast one day ahead**.
 #   Section 7 explains why we need it.
 # - `data/naqfc_dayahead.csv`: NOAA's official air-quality forecast (NAQFC), the run issued the morning
-#   before each target day. It's a baseline in section 5.
+#   before each target day. It's a baseline in section 5, and since our second model change also an input (section 4).
+# - `data/ring_pm25.csv`: EPA readings in a ring of 14 more metro areas around our six (`fetch_ring.py`).
+# - `data/evening_pm25.csv`: each city's EPA hourly readings averaged from 2 to 7 PM (`fetch_evening.py`).
 
 # %%
 import json
@@ -62,6 +64,8 @@ def load(name):
 
 daily = load("daily.csv").merge(load("smoke_days.csv")[["city", "date", "smoke"]], on=["city", "date"])
 daily = daily.merge(load("naqfc_dayahead.csv")[["city", "date", "naqfc_pm25"]], on=["city", "date"], how="left")
+daily = daily.merge(load("ring_pm25.csv")[["date", "ring_max", "ring_mean", "north_max"]], on="date", how="left")
+daily = daily.merge(load("evening_pm25.csv")[["city", "date", "evening_pm25"]], on=["city", "date"], how="left")
 dayahead_wx = load("weather_dayahead_2025.csv")
 
 THRESHOLD = 35  # µg/m³, the US EPA 24-hour PM2.5 standard. A "bad day" is a daily average above it.
@@ -108,6 +112,18 @@ print(daily.groupby("split").agg(first_day=("date", "min"), last_day=("date", "m
 # - **the CAMS model today**, and how far off it was today compared with the monitors (`cams_miss_today`)
 # - **tomorrow's weather forecast:** rain washes smoke out, wind direction says where air comes from
 # - the day of the year, and which city it is
+#
+# Added in our second model change (section 6 explains how we decided):
+#
+# - **NOAA's forecast for tomorrow** (`naqfc_tomorrow`): the official NAQFC forecast for the target day, from the run
+#   issued at 6 AM Central the day before. A physics model that tracks smoke plumes; our model learns how far to trust
+#   it next to the local readings. Three run days in 2022-23 have no forecast; on those 18 rows we use today's reading.
+# - **a wider ring of monitors** (`ring_max_today`, `ring_mean_today`, `north_max_today`): today's EPA readings in 14
+#   metro areas around our six (Duluth, Fargo, Bismarck, St. Cloud, Sioux Falls, Rochester MN, Des Moines,
+#   Cedar Rapids, Green Bay, Grand Rapids, Lansing, Indianapolis, Kansas City, Omaha): the highest, the average, and
+#   the highest of the 4 north of 45°N, which Canadian smoke crosses first.
+# - **this afternoon's reading** (`evening_today`): this city's average hourly reading from 2 to 7 PM today (EPA hours
+#   are in standard time, so 3 to 8 PM in summer). Smoke often arrives late in the day, and the daily average hides it.
 
 # %%
 def add_features(df):
@@ -125,15 +141,23 @@ def add_features(df):
     df = df.join(region, on="date")
     df["day_of_year"] = pd.to_datetime(df["date"]).dt.day_of_year
     df["city_id"] = df["city"].astype("category").cat.codes
+    # NOAA's forecast FOR the target day, issued the morning before, so no shift. Missing (18 rows) -> today's reading.
+    df["naqfc_tomorrow"] = df["naqfc_pm25"].fillna(df["obs_1"])
+    ring = df.groupby("date")[["ring_max", "ring_mean", "north_max"]].first().shift(1)  # shift(1): today's ring
+    df = df.join(ring.add_suffix("_today"), on="date")
+    df["evening_today"] = by_city["evening_pm25"].shift(1)  # this afternoon, 2-7 PM
     return df.dropna(subset=["obs_3"]).reset_index(drop=True)  # the first three days have no history
 
 
 FEATURES = ["obs_1", "obs_2", "obs_3", "change_today", "region_max_today", "region_mean_today",
             "smoke_today", "region_smoke_today", "cams_today", "cams_max_today", "cams_miss_today",
-            "temp_c", "humidity", "precip_mm", "wind_kmh", "wind_u", "wind_v", "day_of_year", "city_id"]
+            "temp_c", "humidity", "precip_mm", "wind_kmh", "wind_u", "wind_v", "day_of_year", "city_id",
+            "naqfc_tomorrow", "ring_max_today", "ring_mean_today", "north_max_today", "evening_today"]
+ORIGINAL = FEATURES[:FEATURES.index("city_id") + 1]  # the inputs before our second model change
 WEATHER = ["temp_c", "humidity", "precip_mm", "wind_kmh", "wind_u", "wind_v"]
 
 df = add_features(daily)
+assert df[FEATURES].notna().all().all()  # Ridge can't take a missing value
 train = df[df["split"] == "train"].copy()
 print(f"training rows: {len(train):,}   features: {len(FEATURES)}")
 
@@ -200,11 +224,13 @@ def predict(models, rows):
 train["block"] = np.where(train["date"] < "2023-01-01", "2022 (Aug-Dec)", train["date"].str[:4])
 train["pred_model"] = np.nan
 train["pred_trees_level"] = np.nan  # the version we tried first and dropped (see below)
+fold_models = {}  # kept for the "what does the model rely on" check below
 for block in train["block"].unique():
     seen, hidden = train[train["block"] != block], train[train["block"] == block]
-    train.loc[hidden.index, "pred_model"] = predict(fit(seen), hidden)
-    plain = make_trees("squared_error").fit(seen[FEATURES], seen["obs_pm25"])
-    train.loc[hidden.index, "pred_trees_level"] = plain.predict(hidden[FEATURES])
+    fold_models[block] = fit(seen)
+    train.loc[hidden.index, "pred_model"] = predict(fold_models[block], hidden)
+    plain = make_trees("squared_error").fit(seen[ORIGINAL], seen["obs_pm25"])  # as first tried, before the new inputs
+    train.loc[hidden.index, "pred_trees_level"] = plain.predict(hidden[ORIGINAL])
 
 print("bad days in each training block:", train.groupby("block")["bad"].sum().to_dict())
 
@@ -274,6 +300,47 @@ print("Training years, each predicted by a model that didn't see that year")
 print(pd.DataFrame({col: score(train, col) for col in FORECASTS + ["pred_trees_level"]}).T)
 
 # %% [markdown]
+# **What does the model rely on?** For each group of inputs, we shuffle that group's values among the days of the
+# hidden year (the group's columns move together), predict again with the same fitted models, and see how much the
+# average error rises. A big rise means the model leans on that group. We repeat each shuffle 3 times and average.
+# Two caveats: `cams_miss_today` is built from today's reading, and the trees add their change to today's reading,
+# so shuffling "this city's readings" also scrambles those; and groups that carry the same news (the region and the
+# smoke maps both see a smoke event) can stand in for each other, so each one can look less needed than it is.
+
+# %%
+GROUPS = {"this city's readings": ["obs_1", "obs_2", "obs_3", "change_today"],
+          "region (six cities today)": ["region_max_today", "region_mean_today"],
+          "smoke maps": ["smoke_today", "region_smoke_today"], "CAMS today": ["cams_today", "cams_max_today", "cams_miss_today"],
+          "tomorrow's weather": WEATHER, "day of year": ["day_of_year"], "which city": ["city_id"],
+          "NOAA's forecast for tomorrow": ["naqfc_tomorrow"],
+          "ring of 14 metros today": ["ring_max_today", "ring_mean_today", "north_max_today"],
+          "this afternoon (2-7 PM)": ["evening_today"]}
+assert sorted(sum(GROUPS.values(), [])) == sorted(FEATURES)
+rng = np.random.default_rng(0)
+
+
+def out_of_fold_errors(rows):
+    """Each row's error, predicted by the model that didn't see its block."""
+    pred = pd.concat([predict(fold_models[block], g) for block, g in rows.groupby("block")]).reindex(rows.index)
+    return (pred - rows["obs_pm25"]).abs()
+
+
+def shuffled(rows, cols):
+    rows = rows.copy()
+    for _block, g in rows.groupby("block"):
+        rows.loc[g.index, cols] = g[cols].sample(frac=1, random_state=rng).to_numpy()
+    return rows
+
+
+base = out_of_fold_errors(train)
+rise = {name: np.mean([out_of_fold_errors(shuffled(train, cols)) - base for _ in range(3)], axis=0)
+        for name, cols in GROUPS.items()}
+print("Rise in average error when one group is shuffled (µg/m³), training years, out-of-fold:")
+print(pd.DataFrame({"all days": {n: r.mean() for n, r in rise.items()},
+                    "the 38 bad days": {n: r[train["bad"].to_numpy()].mean() for n, r in rise.items()}})
+      .sort_values("all days", ascending=False).round(2))
+
+# %% [markdown]
 # **What we tried and dropped:** one tree model predicting the PM2.5 level directly (`pred_trees_level`).
 # Its average error was good, but it caught almost none of the bad days. When 2023 is hidden, the other
 # training years have only 2 bad days and a highest reading of 48, and a tree model can't predict above what
@@ -313,11 +380,41 @@ print(pd.DataFrame({col: score(train, col) for col in FORECASTS + ["pred_trees_l
 # years add only 3 smoke bad days, so this was a weak test of our guess about it. A cost gap of 4 is less than one missed day, so the call is close. A version that
 # keeps CAMS where it exists might get both; we didn't try it, because we had decided not to add variants after
 # seeing these results.
+#
+# **Our second model change: three new inputs, adopted.** Everything above was checked on the earlier model
+# (training-year error 2.49). Its weak spot was arrival days, so we tried three inputs that could see smoke coming,
+# all known the evening before (section 4): **(a)** NOAA's forecast for tomorrow, **(b)** today's readings in a ring
+# of 14 more metro areas, **(c)** this city's 2-7 PM reading. Before building any of them we wrote down and
+# committed the rule (`compare_features.py`): compare the variants below on the same training rows, hiding one year
+# at a time; take the one with the lowest average error, and adopt it only if that error is at least 0.05 below
+# 2.49 **and** its warning cost (at its own cut-off, chosen the same way as above) is at most 5 above the earlier
+# model's 117. No falling back to the runner-up.
+#
+# | Training-year check, 2022-08-07 to 2024 (38 bad days) | average error | warn above | caught | false alarms | cost | arrival days caught |
+# |---|---|---|---|---|---|---|
+# | earlier model | 2.49 | 24.5 | 19 | 22 | 117 | 2 of 21 |
+# | + NOAA's forecast (a) | 2.27 | 30 | 20 | 20 | 110 | 3 of 21 |
+# | + ring of metros (b) | 2.40 | 25.5 | 20 | 21 | 111 | 3 of 21 |
+# | + afternoon reading (c) | 2.45 | 24.5 | 21 | 24 | 109 | 4 of 21 |
+# | + a + b | 2.23 | 28 | 21 | 29 | 114 | 4 of 21 |
+# | **+ a + b + c (adopted)** | **2.22** | 32 | 18 | 12 | 112 | 2 of 21 |
+#
+# All three together had the lowest error, lower in every hidden year (2022: 2.00 → 1.69, 2023: 3.19 → 2.96,
+# 2024: 2.00 → 1.69), and its cost passed the limit, so it is the model in this notebook. Most of the gain comes
+# from NOAA's forecast (the shuffle check above agrees). It did **not** catch more arrival days on the training
+# years: the gain is in everyday accuracy, not in the hard cases.
+#
+# **An honest note on the test year.** We had already scored the earlier model on 2025 (several times while we built
+# the project; the decision log has each look). This change was planned after those looks, so 2025 is no longer a
+# perfectly untouched test. To keep it as clean as we could, the inputs, the variants and the rule were fixed and
+# committed before any of them was scored, the choice used the training years only, and 2025 was scored once,
+# for the adopted model only. The other variants were never run on 2025.
 
 # %% [markdown]
 # ## 7. The test: 2025, scored once
 #
-# We train on all the training years and predict every day of 2025.
+# We train on all the training years and predict every day of 2025. (This is the first and only 2025 score of this
+# model; the earlier model's 2025 results are in section 6's note and the table at the end of this section.)
 #
 # **Weather honesty.** The weather in our main table is almost the real weather (Open-Meteo stitches it from
 # the first hours of each forecast). The evening before, the athletic director only has a forecast. For 2025,
@@ -335,6 +432,24 @@ warn_at["pred_model_with_stitched_weather"] = warn_at["pred_model"]
 results = pd.DataFrame({col: score(test, col) for col in FORECASTS + ["pred_model_with_stitched_weather"]}).T
 print("Test year 2025, all six cities")
 results
+
+# %% [markdown]
+# **Against the earlier model.** The earlier model's 2025 numbers are typed in from its last run (before section 6's
+# second model change), so you can see what the change did on the test year.
+
+# %%
+def summary_2025(rows, col):
+    s = score(rows, col)
+    arrival = (rows["obs_pm25"] > THRESHOLD) & (rows["obs_1"] <= THRESHOLD)
+    return {"average error": s["mae"], "warns above": s["warn_at"], "caught": s["caught"], "false alarms": s["false_alarms"],
+            "cost": COST_OF_A_MISS * s["missed"] + s["false_alarms"],
+            "arrival days caught": f"{int((arrival & (rows[col] > warn_at[col])).sum())} of {int(arrival.sum())}"}
+
+
+print(pd.DataFrame({"earlier model": {"average error": 2.58, "warns above": 24.5, "caught": 18, "false alarms": 21,
+                                      "cost": 106, "arrival days caught": "6 of 21"},
+                    "this model": summary_2025(test, "pred_model"),
+                    "NOAA's forecast": summary_2025(test, "pred_noaa")}).T.to_string())
 
 # %% [markdown]
 # ### How sure is the forecast? A likely range
@@ -453,6 +568,11 @@ print(week[["date", "obs_pm25", "pred_persistence", "pred_noaa", "pred_cams", "p
 #   Light plumes don't count as smoke days, and 12 of the 35 bad test days had only a light plume or none.
 # - **Weather mismatch:** trained on near-real weather, tested on day-ahead forecasts (section 7).
 # - **CAMS is a 45 km model estimate**, and its archive isn't a real day-ahead forecast (section 5).
+# - **NOAA upgraded its forecast model in May 2024.** Most training rows have the older model's forecast as an
+#   input, and 2025 has only the new one, so the model learned how far to trust a forecast that has since changed.
+# - **The afternoon reading** (2-7 PM standard time) is known by about 8 PM in summer, a little later than 6 PM.
+# - **EPA's archive is the checked copy.** In real use the readings would come from AirNow's live feed, which can
+#   differ slightly before EPA checks it.
 # - Six cities, 2.4 years of training data. Monitors are averaged over each metro area, so one neighbourhood can be worse.
 
 # %% [markdown]
