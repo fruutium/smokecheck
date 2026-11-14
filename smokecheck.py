@@ -27,6 +27,20 @@
 # %pip install -q scikit-learn==1.9.1
 
 # %% [markdown]
+# **Results at a glance** (2025, the held-out test year: six cities, 35 days above 35 µg/m³). The last cell of this
+# notebook checks these numbers against what it computes.
+#
+# | Forecast for tomorrow | Average error (µg/m³) | Bad days caught | False alarms |
+# |---|---|---|---|
+# | **SmokeCheck** | **2.36** | 11 of 35 | 7 |
+# | NOAA's official forecast, read at the 35 line | 3.20 | 12 of 35 | 8 |
+# | "Tomorrow = today" | 3.40 | 12 of 35 | 19 |
+#
+# SmokeCheck's forecast is clearly more accurate than NOAA's (26% lower error, in every resample of 2025, section 7).
+# Its "move indoors" warnings are not better: the training years can't pin down the warning line, and it missed
+# every day when smoke first arrived (section 8).
+
+# %% [markdown]
 # ## 1. Load the data
 #
 # Small files, all built by the scripts in this repo (`fetch_*.py`):
@@ -671,6 +685,15 @@ out.round(2).assign(obs_pm25=out["obs_pm25"].round(3)).to_csv("data/predictions.
 with open("data/metrics.json", "w") as f:
     json.dump(metrics, f, indent=1)
 print("saved data/predictions.csv and data/metrics.json")
+
+# The "results at a glance" table at the top must match what this notebook just computed.
+glance = {"pred_model": (2.36, 11, 7), "pred_persistence": (3.40, 12, 19)}
+for col, (mae, caught, false_alarms) in glance.items():
+    got = metrics["overall"][col]
+    assert (got["mae"], got["caught"], got["false_alarms"]) == (mae, caught, false_alarms), (col, got)
+noaa_at_35 = warning_counts(test, "pred_noaa", 35)
+assert (metrics["overall"]["pred_noaa"]["mae"], noaa_at_35["caught"], noaa_at_35["false_alarms"]) == (3.20, 12, 8), noaa_at_35
+print("the results-at-a-glance table matches")
 
 # %% [markdown]
 # ## Sources
