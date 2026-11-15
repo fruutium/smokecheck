@@ -1,5 +1,7 @@
 # SmokeCheck video script (2:00 max)
 
+> **Final video (Nov 14):** re-timed to the recorded voices, 1:53.9 long. Scenes start at 0:00 problem · 0:15 Tomorrow · 0:22 Minneapolis · 0:38 the line · 0:48 Chicago · 1:01 next day · 1:10 Does it work? · 1:39 limits · 1:50 closing card. The times in the sections and run sheet below are the planning times, not the final cut. Abhiddyu reads parts 1, 3, 5 and 6; Aiden reads parts 2, 4, 7 and 8.
+
 <!-- 268 words of voice-over, counted from the "Say:" lines below (about 280 when the numbers are read out in full).
      This is now the script of a produced video, 1:58.5 long: a recording of the real app inside a window, with zooms and
      highlights, between an animated opening, an animated "Does it work?" scene and a closing card. Captions and quiet music are
