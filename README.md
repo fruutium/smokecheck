@@ -6,6 +6,8 @@ decide the evening before whether practice moves indoors on a wildfire-smoke day
 Veritas AI International High School Hackathon 2026 · Track: AI + Climate · starting point: suggested project 4.3.2
 (next-day air quality forecast). Write-up: [`docs/writeup.md`](docs/writeup.md).
 
+**Try it live:** https://fruutium.github.io/smokecheck/ · **Demo video (1:54):** https://youtu.be/PybRdeWZ9UA
+
 ## Run it
 
 - **Notebook (the main deliverable):** open [`smokecheck.ipynb`](smokecheck.ipynb) in Google Colab and choose
