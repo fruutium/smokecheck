@@ -723,7 +723,21 @@ print("the results-at-a-glance table matches")
 #   https://registry.opendata.aws/noaa-nws-naqfc-pds/ (bias-corrected 24-hour average, CONUS 5 km grid)
 # - **NOAA Hazard Mapping System** smoke polygons, https://www.ospo.noaa.gov/products/land/hms.html
 # - **AirNow** hourly data files (US EPA and partners; live mode only), https://files.airnowtech.org/
-# - Libraries: pandas, NumPy, scikit-learn, matplotlib, pyshp, eccodes (reads NOAA's GRIB files), jupytext
-# - AI tools: Claude (Anthropic), through Claude Code. It wrote most of the code (data scripts, this notebook, the app)
-#   and ran the experiments, researched which datasets and forecast archives to use, and drafted the write-up.
-#   We chose the track and project and picked which ideas to try from the options it proposed.
+# - **Libraries:** [scikit-learn](https://scikit-learn.org), [pandas](https://pandas.pydata.org),
+#   [NumPy](https://numpy.org), [matplotlib](https://matplotlib.org), [pyshp](https://github.com/GeospatialPython/pyshp)
+#   (reads NOAA's smoke-map shapefiles), [eccodes](https://github.com/ecmwf/eccodes-python) (reads NOAA's GRIB files),
+#   [jupytext](https://jupytext.readthedocs.io)
+# - **App and website:** [FastAPI](https://fastapi.tiangolo.com) and [Uvicorn](https://www.uvicorn.org) (the local
+#   app), [GitHub Pages](https://pages.github.com) and [GitHub Actions](https://github.com/features/actions) (the live
+#   site and its scheduled forecast), [GSAP](https://gsap.com) (animation), [Google Fonts](https://fonts.google.com)
+#   (Big Shoulders Display, Schibsted Grotesk), three effects adapted from [React Bits](https://reactbits.dev)
+#   (BlurText, SpotlightCard, Aurora)
+# - **Demo video:** made with [HyperFrames](https://github.com/heygen-com/hyperframes). Music: "Deliberate Thought"
+#   by Kevin MacLeod ([incompetech.com](https://incompetech.com)), licensed under
+#   [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/)
+# - **Pretrained models and tutorials:** none. The model is our own, trained in this notebook.
+# - **AI tools:** [Claude](https://claude.com/claude-code) (Anthropic), through Claude Code. It wrote most of the code
+#   (the data scripts, this notebook, the app and website) and ran the experiments, researched which datasets and
+#   forecast archives to use, drafted the write-up and the video script (which we edited), and built the video's edit.
+#   We chose the track and project, picked which ideas to try from the options it proposed, and read through all
+#   the code so we can explain it.
