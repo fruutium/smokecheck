@@ -732,10 +732,14 @@ print("the results-at-a-glance table matches")
 #   site and its scheduled forecast), [GSAP](https://gsap.com) (animation), [Google Fonts](https://fonts.google.com)
 #   (Big Shoulders Display, Schibsted Grotesk), three effects adapted from [React Bits](https://reactbits.dev)
 #   (BlurText, SpotlightCard, Aurora)
-# - **Demo video:** made with [HyperFrames](https://github.com/heygen-com/hyperframes). Music: "Deliberate Thought"
+# - **Demo video:** made with [HyperFrames](https://github.com/heygen-com/hyperframes). Captions timed, and narration
+#   takes checked against the script, with OpenAI's [Whisper](https://github.com/openai/whisper) speech models
+#   (pretrained; small.en, medium.en, large-v3) run locally through [faster-whisper](https://github.com/SYSTRAN/faster-whisper).
+#   Music: "Deliberate Thought"
 #   by Kevin MacLeod ([incompetech.com](https://incompetech.com)), licensed under
 #   [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/)
-# - **Pretrained models and tutorials:** none. The model is our own, trained in this notebook.
+# - **Pretrained models in the forecast:** none. The forecast model is our own, trained in this notebook.
+#   **Tutorials:** none.
 # - **AI tools:** [Claude](https://claude.com/claude-code) (Anthropic), through Claude Code. It wrote most of the code
 #   (the data scripts, this notebook, the app and website) and ran the experiments, researched which datasets and
 #   forecast archives to use, drafted the write-up and the video script (which we edited), and built the video's edit.

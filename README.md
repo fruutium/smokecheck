@@ -84,6 +84,8 @@ python fetch_evening.py       # each city's 2-7 PM hourly reading -> data/evenin
 - Libraries: pandas, NumPy, scikit-learn, matplotlib, pyshp, eccodes, jupytext, FastAPI, Uvicorn.
 - App page: GSAP (animation, https://gsap.com); Google Fonts Big Shoulders Display and Schibsted Grotesk; three
   effects adapted from React Bits (BlurText, SpotlightCard, Aurora), https://reactbits.dev
-- Video: made with HyperFrames. Music: "Deliberate Thought" by Kevin MacLeod (incompetech.com), licensed under
-  Creative Commons Attribution 4.0, https://creativecommons.org/licenses/by/4.0/
+- Video: made with HyperFrames (https://github.com/heygen-com/hyperframes). Captions timed with OpenAI Whisper
+  (https://github.com/openai/whisper), run locally through faster-whisper (https://github.com/SYSTRAN/faster-whisper).
+  Music: "Deliberate Thought" by Kevin MacLeod (incompetech.com), licensed under Creative Commons Attribution 4.0,
+  https://creativecommons.org/licenses/by/4.0/
 - AI tools: Claude (Anthropic), through Claude Code; see the write-up for what it did.
